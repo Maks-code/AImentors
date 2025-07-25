@@ -205,3 +205,20 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+# === Backend (Python) ===
+backend/venv/
+backend/__pycache__/
+*.py[cod]
+
+# Dotenv (секреты)
+*.env
+
+# === Frontend (Node.js / Next.js) ===
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/.env.*.local
+
+# VS Code local settings
+.vscode/
