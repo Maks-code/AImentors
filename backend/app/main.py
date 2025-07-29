@@ -1,34 +1,20 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, EmailStr
-from .supabase_client import supabase
-from .auth import router as auth_router
+# Главный файл. Запускает сервер и 
+# подключает все роуты (типа /register, /me и т.д.)
 
-app = FastAPI()
-app.include_router(auth_router)
+# backend/app/main.py
 
-@app.get("/users")
-def get_users():
-    response = supabase.table("users1").select("*").execute()
-    return response.data
+from fastapi import FastAPI
+from app.routers import auth, ai
+from app.routers import chat
+from app.routers import mentors
 
-class UserCreate(BaseModel):
-    name: str
-    email: EmailStr
+app = FastAPI(
+    title="AI Mentors API",
+    description="API для регистрации, авторизации и профилей",
+    version="0.1.0"
+)
 
-@app.post("/users")
-def create_user(user: UserCreate):
-    try:
-        existing = supabase.table("users1").select("*").eq("email", user.email).execute()
-        if existing.data:
-            raise HTTPException(status_code=400, detail="User already exists")
-
-        response = supabase.table("users1").insert({
-            "name": user.name,
-            "email": user.email.strip()
-        }).execute()
-
-        return {"status": "success", "user": response.data[0]}
-
-    except Exception as e:
-        print("❌ ERROR inserting user:", e)
-        raise HTTPException(status_code=500, detail=str(e))
+app.include_router(auth.router)
+app.include_router(ai.router)
+app.include_router(chat.router)
+app.include_router(mentors.router)
