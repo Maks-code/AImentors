@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from uuid import UUID
 
 class ChatRequest(BaseModel):
     prompt: str

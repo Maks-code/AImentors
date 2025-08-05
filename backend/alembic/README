@@ -1,1 +1,2 @@
 Generic single-database configuration.
+# Миграции Alembic. Создают и изменяют таблицы в PostgreSQL.

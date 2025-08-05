@@ -1,16 +1,24 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
+
+
+from sqlalchemy import Column, Text, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
-from datetime import datetime, timezone
+from sqlalchemy.orm import relationship
+from datetime import datetime
+from uuid import uuid4
+
 from app.database import Base
-import uuid
 
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False)
-    user_id = Column(String, ForeignKey("users.id"))
-    prompt = Column(String, nullable=False)
-    response = Column(String, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    mentor_id = Column(UUID(as_uuid=True), ForeignKey("mentors.id"), nullable=False)
+
+    prompt = Column(Text, nullable=False)
+    response = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
     user = relationship("User", back_populates="chat_messages")
+    mentor = relationship("Mentor", back_populates="chat_messages")

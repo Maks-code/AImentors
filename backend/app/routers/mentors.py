@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from uuid import uuid4
 from app.database import get_db
 from app.models.mentor import Mentor
-from app.schemas.mentor import MentorCreate, MentorOut
+from app.schemas.mentor import MentorOut, MentorCreate
+
 
 router = APIRouter()
 

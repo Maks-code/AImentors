@@ -1,5 +1,5 @@
-# Тут все ручки (эндпоинты) для работы с пользователем: 
-# регистрация, логин, обновление профиля, смена пароля
+# Тут ручки (эндпоинты) для работы с пользователем: 
+# регистрация, логин, обновление профиля, смена пароля и подтверждение почты
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -62,7 +62,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     from app.utils.email_verification import generate_verification_token
     from app.utils.mail import send_verification_email
 
-    token = generate_verification_token(new_user.id)
+    token = generate_verification_token(str(new_user.id))
     verify_url = f"http://127.0.0.1:8000/verify-email?token={token}"
 
     try:
@@ -88,7 +88,7 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token_data = {
-        "sub": user.id,
+        "sub": str(user.id),
         "email": user.email
     }
 

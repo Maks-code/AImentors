@@ -1,4 +1,5 @@
 # хуйня для подтверждения емэйла через письмо с ссылкой
+# Генерация и проверка токенов подтверждения email через JWT.
 
 from jose import jwt
 from datetime import datetime, timedelta

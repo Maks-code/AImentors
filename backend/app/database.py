@@ -1,5 +1,7 @@
 # Подключение к базе данных и базовая 
 # настройка SQLAlchemy (чтобы можно было делать таблицы)
+# Инициализация подключения к PostgreSQL.
+# Создание сессии, engine и базы.
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
