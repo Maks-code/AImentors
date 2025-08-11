@@ -24,6 +24,6 @@ def create_mentor(mentor: MentorCreate, db: Session = Depends(get_db)):
     db.refresh(new_mentor)
     return new_mentor
 
-@router.get("/mentors", response_model=list[MentorOut])
+@router.get("/", response_model=list[MentorOut])
 def get_all_mentors(db: Session = Depends(get_db)):
     return db.query(Mentor).all()

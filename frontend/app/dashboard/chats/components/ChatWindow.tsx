@@ -43,7 +43,8 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
       if (!token) return
 
       try {
-        const res = await fetch(`http://localhost:8000/chat/history/${selectedMentorId}`, {
+        const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+        const res = await fetch(`${base}/chat/history/${selectedMentorId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -86,7 +87,8 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
     setLoading(true)
 
     try {
-      const res = await fetch("http://localhost:8000/chat/send", {
+      const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+      const res = await fetch(`${base}/chat/send`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -98,18 +100,42 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
         }),
       })
 
+      if (!res.ok) {
+        // аккуратно разбираем тело
+        let detail: any = null
+        try { detail = await res.json() } catch {}
+
+        if (res.status === 429) {
+          // Берём message с бэка, если есть; иначе дефолт
+          const msg =
+            detail?.detail?.message ??
+            detail?.message ??
+            'Слишком много запросов. Попробуйте позже.'
+          throw new Error(msg)
+        }
+        if (res.status === 401 || res.status === 403) {
+          throw new Error('Требуется авторизация. Войдите заново.')
+        }
+        const msg = typeof detail === 'string' ? detail : (detail?.detail?.message || detail?.message || 'Сервис временно недоступен')
+        throw new Error(msg)
+      }
+
       const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || "Ошибка AI")
+      const aiAnswer = data?.response
+      if (!aiAnswer || String(aiAnswer).trim() === '') {
+        throw new Error('Модель не вернула ответ. Попробуйте ещё раз.')
+      }
 
       const aiMessage: Message = {
         role: "assistant",
-        content: data.response,
+        content: aiAnswer,
         created_at: new Date().toISOString(),
       }
       setMessages((prev) => [...prev, aiMessage])
-    } catch (err) {
-      console.error("Ошибка при отправке запроса:", err)
-      alert("AI не дал ответ")
+    } catch (err: any) {
+      const msg = err?.message || 'Неизвестная ошибка'
+      console.error('Ошибка при отправке запроса:', err)
+      alert(msg)
     } finally {
       setLoading(false)
     }

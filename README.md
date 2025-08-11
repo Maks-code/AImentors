@@ -6,12 +6,16 @@
             git commit -m "коммент чо изменил или добавил"
             git push origin main
 
-Запуск сервера (ты должен быть в папке backend)
+Запуск сервера бэкенда (ты должен быть в папке backend)
     uvicorn app.main:app --reload
+запуск фронта (должен быть в папке frontend)
+    npm run dev
 
 запуск виртуальной среды
 source venv/bin/activate
 
+запуск докера с редисом
+    docker start ai-mentors-redis 
 
 меняем стек на сразу подходящий (уходим от supabase)
     FastAPI + PostgreSQL + SQLAlchemy + Alembic + JWT
@@ -53,3 +57,9 @@ source venv/bin/activate
 получить историю СВОИХ запросов (по токену пользователя): 
                                 curl -X GET http://127.0.0.1:8000/chat/history \
                                 -H "Authorization: Bearer ТОКЕН"
+
+
+
+	•	Запуск: docker compose up -d
+	•	Пересборка после изменений зависимостей: docker compose up -d --build
+	•	Остановка: docker compose down

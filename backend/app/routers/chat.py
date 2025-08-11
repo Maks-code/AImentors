@@ -1,95 +1,137 @@
-# Роут /chat — основной чат с ментором (mentor_id + prompt).
-# Создаёт запись в БД и возвращает ответ от ИИ.
-
-# Короче говоря здесь описаны все ручки связанные с взаимодействием с чатиком 
-# (запрос истории, отправка запроса чатику, получение ответа и прочее)
-
-from app.models.mentor import Mentor
-from fastapi import APIRouter, Depends, HTTPException
+from uuid import UUID
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from uuid import uuid4
+from sqlalchemy import distinct
+
+from app.core.config import settings
 from app.database import get_db
-from app.auth.jwt_handler import get_current_user, TokenData
+from app.auth.jwt_handler import get_current_user
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.models.chat import ChatMessage
-import os
-import httpx
-from dotenv import load_dotenv
+from app.models.mentor import Mentor
 from app.models.user import User
 from app.utils.openai_chat import openai_chat
-from sqlalchemy import select, distinct
-load_dotenv()
+from app.utils.rate_limit import rate_limit, enforce_daily_quota  # <= наши лимиты
 
+MAX_HISTORY_MESSAGES = 10  # сколько последних сообщений подтягиваем в контекст LLM
 router = APIRouter()
+
+
+# --- зависимость: минутный лимит + дневная квота ---
+async def chat_rate_limit_dep(request: Request):
+    # минутный лимит и окно — из .env (через settings)
+    await rate_limit(
+        request,
+        limit=settings.RATE_LIMIT_PER_MIN,
+        window=settings.RATE_BURST_WINDOW,
+        bucket_prefix="chat",
+    )
+    # суточная квота — из .env (через settings)
+    await enforce_daily_quota(
+        request,
+        limit=settings.DAILY_MSG_LIMIT,
+        bucket_prefix="chat",
+    )
+
 # отправка запроса чатику
-@router.post("/send")
+@router.post("/send", response_model=ChatResponse)
 async def chat(
-    chat_data: ChatRequest,
+    chat_data: ChatRequest,                      # тело запроса
+    _rl: None = Depends(chat_rate_limit_dep),   # лимиты (выполняется ДО логики)
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    mentor_obj = db.query(Mentor).filter(Mentor.id == chat_data.mentor_id).first()
-    if not mentor_obj:
+    # проверяем, что ментор существует
+    mentor: Mentor | None = db.query(Mentor).filter(Mentor.id == chat_data.mentor_id).first()
+    if not mentor:
         raise HTTPException(status_code=404, detail="Наставник не найден")
-    system_prompt = mentor_obj.system_prompt
+
+    system_prompt = mentor.system_prompt or ""  # подстрахуемся от None
+
+    # последние N сообщений этого пользователя с этим ментором
+    history_messages = (
+        db.query(ChatMessage)
+        .filter(
+            ChatMessage.user_id == current_user.id,
+            ChatMessage.mentor_id == chat_data.mentor_id,
+        )
+        .order_by(ChatMessage.created_at.desc())
+        .limit(MAX_HISTORY_MESSAGES)
+        .all()
+    )
 
     try:
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": chat_data.prompt}
-        ]
-        response = await openai_chat(messages)
+        messages = [{"role": "system", "content": system_prompt}]
+
+        # история в правильном порядке: от старых к новым
+        for msg in reversed(history_messages):
+            messages.append({"role": "user", "content": msg.prompt})
+            messages.append({"role": "assistant", "content": msg.response})
+
+        # новое сообщение пользователя
+        messages.append({"role": "user", "content": chat_data.prompt})
+
+        # ответ от LLM
+        answer: str = await openai_chat(messages)
+
+        # защита: пустой ответ → 502 с понятным текстом
+        if not answer or not str(answer).strip():
+            raise HTTPException(status_code=502, detail="LLM returned empty response")
+
+        # сохраняем в БД
         new_message = ChatMessage(
             user_id=current_user.id,
             mentor_id=chat_data.mentor_id,
             prompt=chat_data.prompt,
-            response=response
+            response=answer,
         )
         db.add(new_message)
         db.commit()
 
-        return {"mentor": mentor_obj.name, "response": response}
+        return ChatResponse(response=answer)
 
+    except HTTPException:
+        # пропускаем уже сформированные ошибки (429/404/502 и т.д.)
+        db.rollback()
+        raise
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-# Эта ручка возвращает список менторов с которыми общался пользователь!!! (к которым был запрос)
-@router.get("/history") 
+
+# список менторов, с которыми у пользователя была переписка
+@router.get("/history")
 def get_chat_history(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-    # Получаем уникальные mentor_id, с которыми у пользователя были чаты
     mentor_ids = (
         db.query(distinct(ChatMessage.mentor_id))
         .filter(ChatMessage.user_id == current_user.id)
         .all()
     )
+    mentor_ids = [row[0] for row in mentor_ids]  # распаковка DISTINCT
 
-    # Извлекаем ID-шники
-    mentor_ids = [row[0] for row in mentor_ids]
+    if not mentor_ids:
+        return []
 
-    # Получаем сами объекты менторов
-    mentors = (
-        db.query(Mentor)
-        .filter(Mentor.id.in_(mentor_ids))
-        .all()
-    )
+    mentors = db.query(Mentor).filter(Mentor.id.in_(mentor_ids)).all()
 
-    return [ 
+    return [
         {
-            "id": str(mentor.id),
-            "name": mentor.name,
-            "subject": mentor.subject,
-            "description": mentor.description
+            "id": str(m.id),
+            "name": m.name,
+            "subject": m.subject,
+            "description": getattr(m, "description", "") or getattr(m, "bio", "") or "",
         }
-        for mentor in mentors
+        for m in mentors
     ]
 
-# Эта ручка возвращает историю переписки с конкретным ментором
+
+# вся переписка с конкретным ментором
 @router.get("/history/{mentor_id}")
 def get_chat_history_with_mentor(
-    mentor_id: str,
+    mentor_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -108,7 +150,7 @@ def get_chat_history_with_mentor(
             "id": str(msg.id),
             "prompt": msg.prompt,
             "response": msg.response,
-            "created_at": msg.created_at.isoformat()
+            "created_at": msg.created_at.isoformat(),
         }
         for msg in messages
     ]
