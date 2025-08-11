@@ -1,6 +1,8 @@
 # Роут /chat — основной чат с ментором (mentor_id + prompt).
 # Создаёт запись в БД и возвращает ответ от ИИ.
 
+# Короче говоря здесь описаны все ручки связанные с взаимодействием с чатиком 
+# (запрос истории, отправка запроса чатику, получение ответа и прочее)
 
 from app.models.mentor import Mentor
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,8 +21,8 @@ from sqlalchemy import select, distinct
 load_dotenv()
 
 router = APIRouter()
-
-@router.post("/chat")
+# отправка запроса чатику
+@router.post("/send")
 async def chat(
     chat_data: ChatRequest,
     current_user: User = Depends(get_current_user),
@@ -51,8 +53,8 @@ async def chat(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@router.get("/chat/history")
+# Эта ручка возвращает список менторов с которыми общался пользователь!!! (к которым был запрос)
+@router.get("/history") 
 def get_chat_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -82,4 +84,31 @@ def get_chat_history(
             "description": mentor.description
         }
         for mentor in mentors
+    ]
+
+# Эта ручка возвращает историю переписки с конкретным ментором
+@router.get("/history/{mentor_id}")
+def get_chat_history_with_mentor(
+    mentor_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    messages = (
+        db.query(ChatMessage)
+        .filter(
+            ChatMessage.user_id == current_user.id,
+            ChatMessage.mentor_id == mentor_id,
+        )
+        .order_by(ChatMessage.created_at.asc())
+        .all()
+    )
+
+    return [
+        {
+            "id": str(msg.id),
+            "prompt": msg.prompt,
+            "response": msg.response,
+            "created_at": msg.created_at.isoformat()
+        }
+        for msg in messages
     ]

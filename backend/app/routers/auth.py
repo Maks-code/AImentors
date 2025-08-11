@@ -98,35 +98,33 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
 from app.auth.jwt_handler import get_current_user, TokenData
 
 
-
+# Ручка для получения инфы по текущему пользователю 
+# (у него в профиле его инфа из БД будет отображаться)
 @router.get("/me")
 def read_current_user(
-    token_data: TokenData = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user),  # ✅ получаем User
 ):
-    user = db.query(User).filter(User.id == token_data.sub).first()
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
     return {
-        "id": user.id,
-        "email": user.email,
-        "full_name": user.full_name,
-        "bio": user.bio,
-        "role": user.role,
-        "created_at": user.created_at
+        "id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "bio": current_user.bio,
+        "role": current_user.role,
+        "created_at": current_user.created_at,
+        "avatar_url": current_user.avatar_url, 
     }
 
-
+## Ручка для обновления данных пользователя
 from app.schemas.user import UserUpdate
 
 @router.patch("/me")
 def update_user(
     update_data: UserUpdate,
-    token_data: TokenData = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),  # ✅ здесь
     db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.id == token_data.sub).first()
+    user = db.query(User).filter(User.id == current_user.id).first()  # ✅ и здесь
+
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -135,6 +133,9 @@ def update_user(
 
     if update_data.bio is not None:
         user.bio = update_data.bio
+
+    if update_data.avatar_url is not None:  # ✅ добавим сюда обновление аватара
+        user.avatar_url = update_data.avatar_url
 
     db.commit()
     db.refresh(user)
@@ -146,7 +147,8 @@ def update_user(
             "email": user.email,
             "full_name": user.full_name,
             "bio": user.bio,
-            "role": user.role
+            "role": user.role,
+            "avatar_url": user.avatar_url
         }
     }
 
@@ -156,18 +158,19 @@ from app.schemas.user import UserPasswordUpdate
 @router.patch("/me/password")
 def update_password(
     data: UserPasswordUpdate,
-    token_data: TokenData = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.id == token_data.sub).first()
-    if not pwd_context.verify(data.old_password, user.hashed_password):
+    if not pwd_context.verify(data.old_password, current_user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect old password")
 
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+    # Хешируем новый пароль
+    new_hashed = pwd_context.hash(data.new_password)
 
-    # Новый пароль
-    user.hashed_password = pwd_context.hash(data.new_password)
+    # Прямое обновление в базе
+    db.query(User).filter(User.id == current_user.id).update(
+        {"hashed_password": new_hashed}
+    )
     db.commit()
 
     return {"message": "Password updated successfully"}

@@ -16,7 +16,7 @@ app = FastAPI(
 )
 
 app.include_router(auth.router)
-app.include_router(chat.router)
+app.include_router(chat.router, prefix="/chat", tags=["chat"])
 app.include_router(mentors.router)
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 

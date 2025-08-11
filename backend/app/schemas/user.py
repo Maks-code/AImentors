@@ -1,4 +1,4 @@
-# в этом файле мы объявляем схемы ручек в 
+# в этом файле мы объявляем схемы ручек связанных с пользователем в 
 # Свэгере где затем дергаем их
 
 from pydantic import BaseModel, EmailStr
@@ -17,6 +17,7 @@ class UserLogin(BaseModel): # ручка для логина и получени
 class UserUpdate(BaseModel): # ручка для онбволения ФИО и био
     full_name: Optional[str] = None
     bio: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 class UserPasswordUpdate(BaseModel): # ручка для смены пароля
     old_password: str
