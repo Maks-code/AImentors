@@ -10,6 +10,7 @@ interface Mentor {
   subject: string
   description: string
   avatar_url?: string
+  category: string
 }
 
 interface SidebarProps {
@@ -22,12 +23,16 @@ export default function Sidebar({ mentors, onSelect, onDelete }: SidebarProps) {
   const [activeMentor, setActiveMentor] = useState<string | null>(null)
   const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null) // для показа окна подтверждения
   const [deleting, setDeleting] = useState(false) // индикатор загрузки при удалении
-
+  
   const handleSelect = (id: string) => {
     setActiveMentor(id)
     onSelect(id)
+    const selectedMentor = mentors.find(mentor => mentor.id === id);
+    if (selectedMentor) {
+      console.log(selectedMentor.avatar_url); // Выводим значение avatar_url
+    }
   }
-
+  
   const handleDelete = async (mentorId: string) => {
     setDeleting(true) // начинаем процесс удаления
     try {
@@ -58,11 +63,14 @@ export default function Sidebar({ mentors, onSelect, onDelete }: SidebarProps) {
                   : "hover:bg-gray-100"
               }`}
             >
-              <img
-                src={mentor.avatar_url || `https://i.pravatar.cc/40?u=${mentor.id}`}
-                alt={mentor.name}
-                className="w-8 h-8 rounded-full object-cover"
-              />
+              {/* Аватар */}
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                <img
+                  src={mentor.avatar_url ? `/${mentor.avatar_url}` : "/default-avatar.png"} // Логика отображения аватара
+                  alt={mentor.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
               <div>
                 <div className="text-sm">{mentor.name}</div>
                 <div className="text-xs text-gray-500">{mentor.subject}</div>

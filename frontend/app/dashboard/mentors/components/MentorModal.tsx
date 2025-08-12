@@ -57,11 +57,11 @@ export default function MentorModal({ mentor, onClose }: MentorModalProps) {
         <Dialog.Panel className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-xl">
           <div className="flex flex-col items-center">
             <div className="w-28 h-28 rounded-full overflow-hidden bg-gray-200 shadow-md transform transition-transform hover:scale-105">
-              <img
-                src={mentor.avatar_url || "/default-avatar.png"}
-                alt={mentor.name}
-                className="w-full h-full object-cover"
-              />
+            <img
+              src={mentor.avatar_url ? `/${mentor.avatar_url}` : "/default-avatar.png"}
+              alt={mentor.name}
+              className="w-full h-full object-cover"
+            />
             </div>
             <Dialog.Title className="text-xl font-bold mt-4 text-center">
               {mentor.name}

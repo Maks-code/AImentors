@@ -1,6 +1,3 @@
-// Навигационная панель. Отображается на страницах после авторизации.
-// Содержит ссылки на: профиль, чаты, менторы и т.д.
-
 "use client"
 
 import Link from "next/link"
@@ -40,6 +37,11 @@ export function Navbar() {
           </Link>
           <Link href="#contact" className="text-sm font-medium hover:text-blue-600 transition-colors">
             Contact
+          </Link>
+          
+          {/* Добавление ссылки на раздел чатов */}
+          <Link href="/dashboard/chats" className="text-sm font-medium hover:text-blue-600 transition-colors">
+            Чаты
           </Link>
         </nav>
 

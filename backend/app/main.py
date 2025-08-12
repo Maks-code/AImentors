@@ -8,7 +8,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.core.errors import http_exception_handler, validation_exception_handler
 from app.core.redis import RedisClient
 from app.core.config import settings
-
+from fastapi.middleware.cors import CORSMiddleware
 # роутеры
 from app.routers import auth, chat, mentors
 from app.routers.health import router as health_router  # <-- ИМЕННО ТАК, импортируем router
@@ -26,11 +26,12 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["*"],  # Это разрешит все домены (для разработки можно использовать это)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Подключение Redis через единый клиент
 @app.on_event("startup")

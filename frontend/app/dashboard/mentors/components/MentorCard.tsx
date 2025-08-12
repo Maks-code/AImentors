@@ -1,20 +1,19 @@
-// Файл: app/(dashboard)/mentors/components/MentorCard.tsx
-
 interface Mentor {
-  id: string
-  name: string
-  subject: string
-  description: string
-  avatar_url?: string
-  category: string
+  id: string;
+  name: string;
+  subject: string;
+  description: string;
+  avatar_url?: string;
+  category: string;
 }
 
 interface MentorCardProps {
-  mentor: Mentor
-  onClick: () => void
+  mentor: Mentor;
+  onClick: () => void;
 }
 
 export default function MentorCard({ mentor, onClick }: MentorCardProps) {
+
   return (
     <div
       onClick={onClick}
@@ -24,13 +23,13 @@ export default function MentorCard({ mentor, onClick }: MentorCardProps) {
       <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
         {mentor.avatar_url ? (
           <img
-            src={mentor.avatar_url}
+            src={`/${mentor.avatar_url}`}  // Путь к аватару из базы данных
             alt={mentor.name}
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
-            ?
+          <div className="w-full h-full flex items-center justify-center text-sm text-gray-500">
+            Нет аватара
           </div>
         )}
       </div>
@@ -42,5 +41,5 @@ export default function MentorCard({ mentor, onClick }: MentorCardProps) {
         <p className="text-sm text-gray-700 line-clamp-2">{mentor.description}</p>
       </div>
     </div>
-  )
+  );
 }

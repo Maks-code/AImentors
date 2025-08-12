@@ -11,13 +11,15 @@ from app.models.user import User
 import os
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 SECRET_KEY: str = os.getenv("SECRET_KEY") or ""
 ALGORITHM: str = os.getenv("ALGORITHM") or "HS256"
-
 if not SECRET_KEY:
     raise RuntimeError("SECRET_KEY not set")
+if not ALGORITHM:
+    raise RuntimeError("ALGORITHM not set")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
@@ -37,3 +39,4 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         return user
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+    

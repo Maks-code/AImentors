@@ -1,9 +1,11 @@
-// frontend/components/ChatWindow.tsx
-// Компонент окна чата: отображает историю и позволяет отправлять сообщения AI-ментору
+
+// Надо чото решить с автопрокруткой тк щас она крутит от самого первого сообщения до последнего а это нагрузка
+// надо сделать пагинацию для норм загрузки 
 
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { api } from "@/lib/api"
 
 interface Message {
   role?: "user" | "assistant"
@@ -17,17 +19,16 @@ interface ChatWindowProps {
   selectedMentorId: string | null
   onSendMessage: (message: string) => void
 }
-// функция 3-х точек когда иИ думает, поменять на поориганльнее!
-function TypingIndicator() {
-    return (
-      <div className="flex gap-1 text-sm text-gray-500 animate-pulse">
-        <span>.</span>
-        <span>.</span>
-        <span>.</span>
-      </div>
-    )
-  }
 
+function TypingIndicator() {
+  return (
+    <div className="flex gap-1 text-sm text-gray-500 animate-pulse">
+      <span>.</span>
+      <span>.</span>
+      <span>.</span>
+    </div>
+  )
+}
 
 export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([])
@@ -36,7 +37,7 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    const fetchHistory = async () => {
+    const fetchHistory = async (limit = 10, offset = 0) => {
       if (!selectedMentorId) return
 
       const token = localStorage.getItem("access_token")
@@ -44,14 +45,14 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
 
       try {
         const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
-        const res = await fetch(`${base}/chat/history/${selectedMentorId}`, {
+        const res = await fetch(`${base}/chat/history/${selectedMentorId}?limit=${limit}&offset=${offset}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         })
 
         const data = await res.json()
-
+        
         const formatted = data.flatMap((m: any) => [
           { role: "user", content: m.prompt, created_at: m.created_at },
           { role: "assistant", content: m.response, created_at: m.created_at },
@@ -73,9 +74,6 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
   const handleSend = async () => {
     if (!input.trim() || !selectedMentorId) return
 
-    const token = localStorage.getItem("access_token")
-    if (!token) return alert("Вы не авторизованы")
-
     const userMessage: Message = {
       role: "user",
       content: input,
@@ -87,8 +85,8 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
     setLoading(true)
 
     try {
-      const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
-      const res = await fetch(`${base}/chat/send`, {
+      const token = localStorage.getItem("access_token")
+      const res = await fetch("http://localhost:8000/chat/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -99,26 +97,6 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
           mentor_id: selectedMentorId,
         }),
       })
-
-      if (!res.ok) {
-        // аккуратно разбираем тело
-        let detail: any = null
-        try { detail = await res.json() } catch {}
-
-        if (res.status === 429) {
-          // Берём message с бэка, если есть; иначе дефолт
-          const msg =
-            detail?.detail?.message ??
-            detail?.message ??
-            'Слишком много запросов. Попробуйте позже.'
-          throw new Error(msg)
-        }
-        if (res.status === 401 || res.status === 403) {
-          throw new Error('Требуется авторизация. Войдите заново.')
-        }
-        const msg = typeof detail === 'string' ? detail : (detail?.detail?.message || detail?.message || 'Сервис временно недоступен')
-        throw new Error(msg)
-      }
 
       const data = await res.json()
       const aiAnswer = data?.response
@@ -132,10 +110,16 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
         created_at: new Date().toISOString(),
       }
       setMessages((prev) => [...prev, aiMessage])
-    } catch (err: any) {
-      const msg = err?.message || 'Неизвестная ошибка'
-      console.error('Ошибка при отправке запроса:', err)
-      alert(msg)
+    } catch (err: unknown) {
+      // Проверка и приведение err к типу Error
+      if (err instanceof Error) {
+        const msg = err.message || 'Неизвестная ошибка'
+        console.error('Ошибка при отправке запроса:', err)
+        alert(msg)
+      } else {
+        console.error('Ошибка при отправке запроса:', err)
+        alert('Неизвестная ошибка')
+      }
     } finally {
       setLoading(false)
     }
@@ -167,12 +151,12 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
           </div>
         ))}
         {loading && (
-            <div className="flex justify-start mb-2">
-                <div className="bg-gray-100 p-2 rounded text-sm max-w-[80%]">
-                <TypingIndicator />
-                </div>
+          <div className="flex justify-start mb-2">
+            <div className="bg-gray-100 p-2 rounded text-sm max-w-[80%]">
+              <TypingIndicator />
             </div>
-            )}
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 

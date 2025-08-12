@@ -222,3 +222,5 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
     except Exception as e:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
+    
+

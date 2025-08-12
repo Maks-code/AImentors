@@ -14,8 +14,6 @@ class Mentor(Base):
     description = Column(Text, nullable=True)
     system_prompt = Column(Text, nullable=True)
     avatar_url = Column(String, nullable=True)
-
     is_public = Column(Boolean, default=True)
     order_index = Column(Integer, default=0)
-
     chat_messages = relationship("ChatMessage", back_populates="mentor")

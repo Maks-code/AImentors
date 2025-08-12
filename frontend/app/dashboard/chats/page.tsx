@@ -1,15 +1,18 @@
-"use client"  // Добавляем директиву для клиента
+"use client"
+
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import Sidebar from "./components/Sidebar"  // Импортируем Sidebar
+import Sidebar from "./components/Sidebar"
 import ChatWindow from "./components/ChatWindow"
 import LogoLoader from "@/components/LogoLoader"
 
 interface Mentor {
-  id: string
-  name: string
-  subject: string
-  description: string
+  id: string;
+  name: string;
+  subject: string;
+  description: string;
+  avatar_url?: string;
+  category: string;
 }
 
 export default function ChatPage() {
@@ -38,7 +41,7 @@ export default function ChatPage() {
         if (selectedFromURL && data.some((m: Mentor) => m.id === selectedFromURL)) {
           setSelectedMentorId(selectedFromURL)
         } else if (data.length > 0) {
-          setSelectedMentorId(data[0].id)
+          setSelectedMentorId(null)
         }
       } catch (err) {
         console.error("Ошибка загрузки списка менторов", err)
@@ -54,6 +57,7 @@ export default function ChatPage() {
     setMentors((prevMentors) =>
       prevMentors.filter((mentor) => mentor.id !== mentorId)
     )
+    setSelectedMentorId(null) // После удаления сбрасываем выбранного ментора
   }
 
   const handleSendMessage = async (message: string) => {
@@ -103,7 +107,7 @@ export default function ChatPage() {
             onSendMessage={handleSendMessage}
           />
         ) : (
-          <p>Выберите ментора слева.</p>
+          <p>Выберите ментора слева.</p>  // Сообщение, если ментора не выбрано
         )}
       </div>
     </div>
