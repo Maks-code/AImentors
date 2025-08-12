@@ -1,8 +1,8 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import distinct
-
+from sqlalchemy import distinct, and_
+from uuid import UUID
 from app.core.config import settings
 from app.database import get_db
 from app.auth.jwt_handler import get_current_user
@@ -154,3 +154,22 @@ def get_chat_history_with_mentor(
         }
         for msg in messages
     ]
+# удалить историю чата пользователя с ментором
+@router.delete("/history/{mentor_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_chat_history_with_mentor(
+    mentor_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Удаляем только сообщения текущего пользователя с этим ментором
+    db.query(ChatMessage).filter(
+        and_(
+            ChatMessage.user_id == current_user.id,
+            ChatMessage.mentor_id == mentor_id,
+        )
+    ).delete(synchronize_session=False)
+
+    db.commit()
+    # 204 без тела
+    return
+

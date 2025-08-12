@@ -1,8 +1,7 @@
-"use client"
-
+"use client"  // Добавляем директиву для клиента
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import Sidebar from "./components/Sidebar"
+import Sidebar from "./components/Sidebar"  // Импортируем Sidebar
 import ChatWindow from "./components/ChatWindow"
 import LogoLoader from "@/components/LogoLoader"
 
@@ -51,6 +50,12 @@ export default function ChatPage() {
     fetchMentors()
   }, [searchParams])
 
+  const handleDeleteMentor = (mentorId: string) => {
+    setMentors((prevMentors) =>
+      prevMentors.filter((mentor) => mentor.id !== mentorId)
+    )
+  }
+
   const handleSendMessage = async (message: string) => {
     const token = localStorage.getItem("access_token")
     if (!token || !selectedMentorId) return
@@ -86,7 +91,11 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full">
-      <Sidebar mentors={mentors} onSelect={setSelectedMentorId} />
+      <Sidebar
+        mentors={mentors}
+        onSelect={setSelectedMentorId}
+        onDelete={handleDeleteMentor}  // передаем колбэк удаления
+      />
       <div className="flex-1 ml-4">
         {selectedMentorId ? (
           <ChatWindow
