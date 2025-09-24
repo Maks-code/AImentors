@@ -288,7 +288,7 @@ async def chat(
 
             db.commit()
             db.refresh(new_plan)
-            plan_id = str(new_plan.id)
+            plan_id = new_plan.id
             print("✅ Plan created with nested items (validated):", plan_id)
 
         # сохраняем в БД (в чат кладем уже нормальные данные)
@@ -296,7 +296,9 @@ async def chat(
             user_id=current_user.id,
             mentor_id=chat_data.mentor_id,
             prompt=chat_data.prompt,
-            response=content_text,   # текст ответа ассистента
+            response=content_text,
+            plan_id=plan_id,
+            plan_snapshot=plan_draft if plan_draft else None,  # 💾 сохраняем план
         )
         db.add(new_message)
         db.commit()
@@ -362,14 +364,16 @@ def get_chat_history_with_mentor(
     )
 
     return [
-        {
-            "id": str(msg.id),
-            "prompt": msg.prompt,
-            "response": msg.response,
-            "created_at": msg.created_at.isoformat(),
-        }
-        for msg in messages
-    ]
+    {
+        "id": str(msg.id),
+        "prompt": msg.prompt,
+        "response": msg.response,
+        "created_at": msg.created_at.isoformat(),
+        "plan_id": str(msg.plan_id) if msg.plan_id else None,
+        "plan_snapshot": msg.plan_snapshot,  # ⚡ теперь фронт получит JSON плана
+    }
+    for msg in messages
+]
 # удалить историю чата пользователя с ментором
 @router.delete("/history/{mentor_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_chat_history_with_mentor(

@@ -20,8 +20,8 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
-    planDraft: Optional[Dict[str, Any]] = None
-    plan_id: Optional[str] = None
+    planDraft: dict | None = None
+    plan_id: UUID | None = None
 
     class Config:
         orm_mode = True

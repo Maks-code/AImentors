@@ -303,3 +303,17 @@ def confirm_plan(plan_id: str, db: Session = Depends(get_db), current_user: User
     db.commit()
     db.refresh(plan)
     return {"message": "План подтвержден", "plan_id": plan.id}
+
+@router.patch("/plans/{plan_id}/reject")
+def reject_plan(plan_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    plan = db.query(LearningPlan).filter(
+        LearningPlan.id == plan_id,
+        LearningPlan.user_id == current_user.id
+    ).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="План не найден")
+
+    plan.status = "deleted"
+    db.commit()
+    db.refresh(plan)
+    return {"message": "План отклонён (помечен как deleted)", "plan_id": plan.id}
