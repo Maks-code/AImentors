@@ -21,7 +21,7 @@ if not SECRET_KEY:
 if not ALGORITHM:
     raise RuntimeError("ALGORITHM not set")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 class TokenData(BaseModel):
     sub: str

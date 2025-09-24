@@ -26,3 +26,4 @@ def get_db():
     finally:
         db.close()
 from app.models import user, chat  # 👈 важно!
+print("🔥 DATABASE_URL из .env:", DATABASE_URL)

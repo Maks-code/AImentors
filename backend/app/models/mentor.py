@@ -17,3 +17,4 @@ class Mentor(Base):
     is_public = Column(Boolean, default=True)
     order_index = Column(Integer, default=0)
     chat_messages = relationship("ChatMessage", back_populates="mentor")
+    plans = relationship("LearningPlan", back_populates="mentor")

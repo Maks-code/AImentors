@@ -22,3 +22,4 @@ class ChatMessage(Base):
 
     user = relationship("User", back_populates="chat_messages")
     mentor = relationship("Mentor", back_populates="chat_messages")
+    

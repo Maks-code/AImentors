@@ -63,3 +63,6 @@ source venv/bin/activate
 	•	Запуск: docker compose up -d
 	•	Пересборка после изменений зависимостей: docker compose up -d --build
 	•	Остановка: docker compose down
+
+    проверить чо сейчас запущено: lsof -i :3000
+                                  lsof -i :8000

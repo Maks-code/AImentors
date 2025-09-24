@@ -2,10 +2,14 @@
 // Надо чото решить с автопрокруткой тк щас она крутит от самого первого сообщения до последнего а это нагрузка
 // надо сделать пагинацию для норм загрузки 
 
+// Надо чото решить с автопрокруткой тк щас она крутит от самого первого сообщения до последнего а это нагрузка
+// надо сделать пагинацию для норм загрузки 
+
 "use client"
 
 import { useState, useEffect, useRef } from "react"
 import { api } from "@/lib/api"
+import PlanMessage from "./PlanMessage"
 
 interface Message {
   role?: "user" | "assistant"
@@ -13,6 +17,8 @@ interface Message {
   prompt?: string
   response?: string
   created_at?: string
+  planDraft?: any
+  plan_id?: string
 }
 
 interface ChatWindowProps {
@@ -108,6 +114,8 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
         role: "assistant",
         content: aiAnswer,
         created_at: new Date().toISOString(),
+        ...(data.planDraft ? { planDraft: data.planDraft } : {}),
+        ...(data.plan_id ? { plan_id: data.plan_id } : {}),
       }
       setMessages((prev) => [...prev, aiMessage])
     } catch (err: unknown) {
@@ -136,13 +144,17 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
               msg.role === "user" ? "items-end" : "items-start"
             }`}
           >
-            <div
-              className={`p-2 rounded text-sm whitespace-pre-wrap max-w-[75%] ${
-                msg.role === "user" ? "bg-blue-100" : "bg-gray-100"
-              }`}
-            >
-              {msg.content}
-            </div>
+            {(msg.role === "assistant" && msg.planDraft) ? (
+              <PlanMessage plan={msg.planDraft} />
+            ) : (
+              <div
+                className={`p-2 rounded text-sm whitespace-pre-wrap max-w-[75%] ${
+                  msg.role === "user" ? "bg-blue-100" : "bg-gray-100"
+                }`}
+              >
+                {msg.content}
+              </div>
+            )}
             {msg.created_at && (
               <div className="text-xs text-gray-500">
                 {new Date(msg.created_at).toLocaleString()}

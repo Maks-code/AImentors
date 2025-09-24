@@ -1,4 +1,6 @@
 from uuid import UUID
+import json
+import re
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import distinct, and_
@@ -10,14 +12,91 @@ from app.schemas.chat import ChatRequest, ChatResponse
 from app.models.chat import ChatMessage
 from app.models.mentor import Mentor
 from app.models.user import User
+from app.models import LearningPlan, Module, Lesson, Task
 from app.utils.openai_chat import openai_chat
 from app.utils.rate_limit import rate_limit, enforce_daily_quota  # <= наши лимиты
 
 MAX_HISTORY_MESSAGES = 10  # сколько последних сообщений подтягиваем в контекст LLM
 router = APIRouter()
 
+# --- helpers ---
+def _extract_first_json(text: str) -> dict | None:
+    """
+    Try to extract the first JSON object from a raw LLM string.
+    Handles cases like:
+    - plain JSON
+    - JSON inside triple backticks ```json ... ```
+    - prose + JSON blob
+    """
+    if not isinstance(text, str) or not text.strip():
+        return None
+
+    # try direct parse
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    # try code block ```json ... ```
+    m = re.search(r"```(?:json)?\s*([\s\S]*?)```", text, re.IGNORECASE)
+    if m:
+        snippet = m.group(1).strip()
+        try:
+            return json.loads(snippet)
+        except Exception:
+            pass
+
+    # try to find first {...} that looks like JSON
+    brace_start = text.find("{")
+    brace_end = text.rfind("}")
+    if brace_start != -1 and brace_end != -1 and brace_end > brace_start:
+        candidate = text[brace_start: brace_end + 1]
+        try:
+            return json.loads(candidate)
+        except Exception:
+            return None
+
+    return None
+
+def _format_plan_for_chat(plan_draft: dict) -> str:
+    title = plan_draft.get("title", "Untitled Plan")
+    description = plan_draft.get("description", "")
+    modules = plan_draft.get("modules", [])
+
+    lines = []
+    lines.append(f"📋 План: {title}")
+    if description:
+        lines.append(f"Описание: {description}")
+    lines.append("")
+
+    if not modules:
+        return "\n".join(lines)
+
+    for i, module in enumerate(modules, start=1):
+        module_title = module.get("title", f"Модуль {i}")
+        module_description = module.get("description", "")
+        lines.append(f"{i}. Модуль: {module_title}")
+        if module_description:
+            lines.append(f"   Описание: {module_description}")
+
+        lessons = module.get("lessons", [])
+        for j, lesson in enumerate(lessons, start=1):
+            lesson_title = lesson.get("title", f"Урок {j}")
+            lesson_type = lesson.get("type", "")
+            lines.append(f"   {i}.{j}. Урок: {lesson_title} (Тип: {lesson_type})")
+
+            tasks = lesson.get("tasks", [])
+            for k, task in enumerate(tasks, start=1):
+                task_question = task.get("question") or task.get("title") or f"Задание {k}"
+                lines.append(f"      {i}.{j}.{k}. Задание: {task_question}")
+
+        lines.append("")
+
+    return "\n".join(lines)
+
 
 # --- зависимость: минутный лимит + дневная квота ---
+"""
 async def chat_rate_limit_dep(request: Request):
     # минутный лимит и окно — из .env (через settings)
     await rate_limit(
@@ -32,12 +111,12 @@ async def chat_rate_limit_dep(request: Request):
         limit=settings.DAILY_MSG_LIMIT,
         bucket_prefix="chat",
     )
-
+"""
 # отправка запроса чатику
 @router.post("/send", response_model=ChatResponse)
 async def chat(
     chat_data: ChatRequest,                      # тело запроса
-    _rl: None = Depends(chat_rate_limit_dep),   # лимиты (выполняется ДО логики)
+    #ы_rl: None = Depends(chat_rate_limit_dep),   # лимиты (выполняется ДО логики)
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -71,33 +150,169 @@ async def chat(
         # новое сообщение пользователя
         messages.append({"role": "user", "content": chat_data.prompt})
 
-        # ответ от LLM
-        answer: str = await openai_chat(messages)
+        # --- ответ от LLM ---
+        raw = await openai_chat(messages)
+        # raw может быть строкой, dict с reply/planDraft, dict в виде ответа OpenAI (choices[0].message.content)
+        content_text: str = ""
+        plan_draft: dict | None = None
+        plan_id = None
 
-        # защита: пустой ответ → 502 с понятным текстом
-        if not answer or not str(answer).strip():
+        if isinstance(raw, dict) and ("reply" in raw or "planDraft" in raw):
+            # уже распарсили в utils
+            content_text = str(raw.get("reply") or "")
+            plan_draft = raw.get("planDraft")
+        elif isinstance(raw, dict) and "choices" in raw:
+            try:
+                content_text = raw["choices"][0]["message"]["content"]
+            except Exception:
+                content_text = ""
+        elif isinstance(raw, str):
+            content_text = raw
+        else:
+            # на всякий случай
+            content_text = str(raw)
+
+        print("🔥 LLM content:", content_text)
+
+        # если модель вернула JSON текстом — вытащим
+        parsed = _extract_first_json(content_text)
+        if isinstance(parsed, dict):
+            # если внутри есть наши ключи — используем их
+            if "reply" in parsed or "planDraft" in parsed:
+                content_text = str(parsed.get("reply") or content_text)
+                plan_draft = parsed.get("planDraft", plan_draft)
+
+        # если planDraft неожиданно строкой — парсим
+        if isinstance(plan_draft, str):
+            try:
+                plan_draft = json.loads(plan_draft)
+            except Exception:
+                plan_draft = None
+
+        if not content_text or not content_text.strip():
             raise HTTPException(status_code=502, detail="LLM returned empty response")
 
-        # сохраняем в БД
+        print("🧩 Parsed planDraft:", plan_draft)
+
+        # --- создаём план и вложенные сущности, если пришёл planDraft.create_plan ---
+        if isinstance(plan_draft, dict) and plan_draft.get("action") == "create_plan":
+            title = str(plan_draft.get("title") or "Untitled Plan")
+            description = str(plan_draft.get("description") or "")
+            modules = plan_draft.get("modules", [])
+
+            # Валидация: modules должен быть списком и не пустым
+            if not isinstance(modules, list) or len(modules) == 0:
+                raise HTTPException(status_code=422, detail="План невалидный: отсутствуют модули")
+
+            # 1) сам план
+            new_plan = LearningPlan(
+                title=title,
+                description=description,
+                mentor_id=chat_data.mentor_id,
+                user_id=current_user.id,
+            )
+            db.add(new_plan)
+            db.flush()  # получить id без коммита
+
+            # 2) модули
+            for module_idx, module_data in enumerate(modules):
+                if not isinstance(module_data, dict):
+                    continue
+
+                module_title = str(module_data.get("title") or f"Модуль {module_idx+1}")
+                module_description = str(module_data.get("description") or "")
+
+                module = Module(
+                    title=module_title,
+                    description=module_description,
+                    plan_id=new_plan.id,
+                    order_index=module_idx,
+                )
+                db.add(module)
+                db.flush()
+
+                lessons = module_data.get("lessons", [])
+                # Валидация: lessons должен быть списком
+                if not isinstance(lessons, list):
+                    lessons = []
+
+                # 3) уроки
+                for lesson_idx, lesson_data in enumerate(lessons):
+                    if not isinstance(lesson_data, dict):
+                        continue
+
+                    lesson_title = str(lesson_data.get("title") or f"Урок {lesson_idx+1}")
+                    lesson_type = str(lesson_data.get("type") or "theory")
+
+                    lesson_content = lesson_data.get("content") or {}
+                    # content гарантированно dict
+                    if not isinstance(lesson_content, dict):
+                        lesson_content = {"text": str(lesson_content)}
+
+                    lesson = Lesson(
+                        title=lesson_title,
+                        type=lesson_type,
+                        content=lesson_content,
+                        module_id=module.id,
+                        order_index=lesson_idx,
+                    )
+                    db.add(lesson)
+                    db.flush()
+
+                    tasks = lesson_data.get("tasks", [])
+                    # Валидация: tasks должен быть списком
+                    if not isinstance(tasks, list):
+                        tasks = []
+
+                    # 4) задания
+                    for task_idx, task_data in enumerate(tasks):
+                        if not isinstance(task_data, dict):
+                            continue
+
+                        task_question = str(task_data.get("question") or task_data.get("title") or f"Задание {task_idx+1}")
+                        task_type = str(task_data.get("type") or "text")
+                        task_options = task_data.get("options") or []
+                        if not isinstance(task_options, list):
+                            task_options = []
+                        task_answer = task_data.get("answer")
+
+                        task = Task(
+                            question=task_question,
+                            type=task_type,
+                            options=task_options,
+                            answer=task_answer,
+                            lesson_id=lesson.id,
+                            order_index=task_idx,
+                        )
+                        db.add(task)
+
+            db.commit()
+            db.refresh(new_plan)
+            plan_id = str(new_plan.id)
+            print("✅ Plan created with nested items (validated):", plan_id)
+
+        # сохраняем в БД (в чат кладем уже нормальные данные)
         new_message = ChatMessage(
             user_id=current_user.id,
             mentor_id=chat_data.mentor_id,
             prompt=chat_data.prompt,
-            response=answer,
+            response=content_text,   # текст ответа ассистента
         )
         db.add(new_message)
         db.commit()
 
-        return ChatResponse(response=answer)
-
+        formatted_plan = _format_plan_for_chat(plan_draft) if plan_draft and plan_id else content_text
+        return ChatResponse(
+            response=formatted_plan,
+            planDraft=plan_draft,
+            plan_id=plan_id
+        )
     except HTTPException:
-        # пропускаем уже сформированные ошибки (429/404/502 и т.д.)
         db.rollback()
         raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # список менторов, с которыми у пользователя была переписка
 @router.get("/history")
@@ -118,14 +333,15 @@ def get_chat_history(
     mentors = db.query(Mentor).filter(Mentor.id.in_(mentor_ids)).all()
 
     return [
-        {
-            "id": str(m.id),
-            "name": m.name,
-            "subject": m.subject,
-            "description": getattr(m, "description", "") or getattr(m, "bio", "") or "",
-        }
-        for m in mentors
-    ]
+    {
+        "id": str(m.id),
+        "name": m.name,
+        "subject": m.subject,
+        "description": getattr(m, "description", "") or getattr(m, "bio", "") or "",
+        "avatar_url": m.avatar_url,   # ← добавляем
+    }
+    for m in mentors
+]
 
 
 # вся переписка с конкретным ментором
@@ -172,4 +388,3 @@ def delete_chat_history_with_mentor(
     db.commit()
     # 204 без тела
     return
-

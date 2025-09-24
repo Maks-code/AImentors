@@ -13,6 +13,15 @@ export default function SettingsPage() {
   const [oldPass, setOldPass] = useState("")
   const [newPass, setNewPass] = useState("")
 
+  // Новые состояния для новых секций
+  const [emailNotifications, setEmailNotifications] = useState(true)
+  const [browserNotifications, setBrowserNotifications] = useState(false)
+
+  const [darkTheme, setDarkTheme] = useState(false)
+
+  const [hideEmail, setHideEmail] = useState(false)
+  const [privateProfile, setPrivateProfile] = useState(false)
+
   const handlePasswordChange = async () => {
     const token = localStorage.getItem("access_token")
     if (!token) return alert("Вы не авторизованы")
@@ -42,11 +51,24 @@ export default function SettingsPage() {
     }
   }
 
+  const handleResetDefaults = () => {
+    setFullName("Maxim Lushkin")
+    setEmail("example@mail.com")
+    setBio("Учусь, развиваюсь, создаю!")
+    setOldPass("")
+    setNewPass("")
+    setEmailNotifications(true)
+    setBrowserNotifications(false)
+    setDarkTheme(false)
+    setHideEmail(false)
+    setPrivateProfile(false)
+  }
+
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-10">
       {/* 🔧 Настройки профиля */}
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Настройки профиля</h1>
+      <div className="p-6 rounded-2xl bg-white/30 backdrop-blur-lg border border-white/40 shadow-xl space-y-4">
+        <h1 className="text-2xl font-bold text-indigo-700">Настройки профиля</h1>
 
         <div>
           <label className="block text-sm font-medium mb-1">Имя</label>
@@ -68,14 +90,14 @@ export default function SettingsPage() {
           />
         </div>
 
-        <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+        <button className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow hover:opacity-90 transition">
           Сохранить изменения
         </button>
       </div>
 
       {/* 🔒 Смена пароля */}
-      <div className="max-w-md mx-auto mt-8 p-6 border rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Сменить пароль</h2>
+      <div className="p-6 rounded-2xl bg-white/30 backdrop-blur-lg border border-white/40 shadow-xl space-y-4">
+        <h2 className="text-xl font-semibold text-indigo-600 mb-4">Сменить пароль</h2>
 
         <div className="mb-4">
           <label className="block text-sm font-medium mb-1">Старый пароль</label>
@@ -102,9 +124,108 @@ export default function SettingsPage() {
 
         <button
           onClick={handlePasswordChange}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+          className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow hover:opacity-90 transition"
         >
           Сменить пароль
+        </button>
+      </div>
+
+      {/* 🔔 Настройки уведомлений */}
+      <div className="p-6 rounded-2xl bg-white/30 backdrop-blur-lg border border-white/40 shadow-xl space-y-4">
+        <h2 className="text-xl font-semibold text-indigo-600 mb-4">Настройки уведомлений</h2>
+        <div className="flex items-center mb-3">
+          <input
+            id="emailNotifications"
+            type="checkbox"
+            checked={emailNotifications}
+            onChange={() => setEmailNotifications(!emailNotifications)}
+            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label htmlFor="emailNotifications" className="text-sm font-medium">
+            Email-уведомления
+          </label>
+        </div>
+        <div className="flex items-center">
+          <input
+            id="browserNotifications"
+            type="checkbox"
+            checked={browserNotifications}
+            onChange={() => setBrowserNotifications(!browserNotifications)}
+            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label htmlFor="browserNotifications" className="text-sm font-medium">
+            Уведомления в браузере
+          </label>
+        </div>
+        <button className="mt-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow hover:opacity-90 transition">
+          Сохранить уведомления
+        </button>
+      </div>
+
+      {/* 🎨 Настройки темы */}
+      <div className="p-6 rounded-2xl bg-white/30 backdrop-blur-lg border border-white/40 shadow-xl space-y-4">
+        <h2 className="text-xl font-semibold text-indigo-600 mb-4">Настройки темы</h2>
+        <div className="flex items-center space-x-4">
+          <span className="text-sm font-medium">Светлая</span>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={darkTheme}
+              onChange={() => setDarkTheme(!darkTheme)}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-500 dark:peer-focus:ring-blue-800 peer-checked:bg-blue-600 relative">
+              <span
+                className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-5`}
+              />
+            </div>
+          </label>
+          <span className="text-sm font-medium">Тёмная</span>
+        </div>
+        <button className="mt-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow hover:opacity-90 transition">
+          Сохранить тему
+        </button>
+      </div>
+
+      {/* 🔐 Настройки приватности */}
+      <div className="p-6 rounded-2xl bg-white/30 backdrop-blur-lg border border-white/40 shadow-xl space-y-4">
+        <h2 className="text-xl font-semibold text-indigo-600 mb-4">Настройки приватности</h2>
+        <div className="flex items-center mb-3">
+          <input
+            id="hideEmail"
+            type="checkbox"
+            checked={hideEmail}
+            onChange={() => setHideEmail(!hideEmail)}
+            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label htmlFor="hideEmail" className="text-sm font-medium">
+            Скрывать email от других
+          </label>
+        </div>
+        <div className="flex items-center">
+          <input
+            id="privateProfile"
+            type="checkbox"
+            checked={privateProfile}
+            onChange={() => setPrivateProfile(!privateProfile)}
+            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label htmlFor="privateProfile" className="text-sm font-medium">
+            Делать профиль приватным
+          </label>
+        </div>
+        <button className="mt-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow hover:opacity-90 transition">
+          Сохранить приватность
+        </button>
+      </div>
+
+      {/* Кнопка сброса настроек */}
+      <div className="flex justify-center">
+        <button
+          onClick={handleResetDefaults}
+          className="bg-gradient-to-r from-rose-500 to-red-600 text-white px-6 py-2 rounded-lg shadow hover:opacity-90 transition"
+        >
+          Сбросить настройки по умолчанию
         </button>
       </div>
     </div>

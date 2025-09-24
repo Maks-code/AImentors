@@ -1,5 +1,6 @@
 from pydantic import BaseModel, field_validator
 from uuid import UUID
+from typing import Optional, Dict, Any
 
 MAX_PROMPT_LEN = 4000  # при желании вынеси в конфиг
 
@@ -19,3 +20,8 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+    planDraft: Optional[Dict[str, Any]] = None
+    plan_id: Optional[str] = None
+
+    class Config:
+        orm_mode = True

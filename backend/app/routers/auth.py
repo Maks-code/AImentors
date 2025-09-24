@@ -63,7 +63,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     from app.utils.mail import send_verification_email
 
     token = generate_verification_token(str(new_user.id))
-    verify_url = f"http://127.0.0.1:8000/verify-email?token={token}"
+    verify_url = f"http://127.0.0.1:8000/auth/verify-email?token={token}"
 
     try:
         await send_verification_email(new_user.email, verify_url)

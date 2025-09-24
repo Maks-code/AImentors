@@ -64,13 +64,21 @@ export default function Sidebar({ mentors, onSelect, onDelete }: SidebarProps) {
               }`}
             >
               {/* Аватар */}
-              <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
-                <img
-                  src={mentor.avatar_url ? `/${mentor.avatar_url}` : "/default-avatar.png"} // Логика отображения аватара
-                  alt={mentor.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+<div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+  {mentor.avatar_url ? (
+    <img
+      src={`/${mentor.avatar_url}`} // ожидаем относительный путь из public
+      alt={mentor.name}
+      className="w-full h-full object-cover"
+    />
+  ) : (
+    <img
+      src="/default-avatar.png" // fallback если нет аватара
+      alt="Нет аватара"
+      className="w-full h-full object-cover"
+    />
+  )}
+</div>
               <div>
                 <div className="text-sm">{mentor.name}</div>
                 <div className="text-xs text-gray-500">{mentor.subject}</div>
