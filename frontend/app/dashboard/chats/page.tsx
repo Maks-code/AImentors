@@ -60,54 +60,27 @@ export default function ChatPage() {
     setSelectedMentorId(null) // После удаления сбрасываем выбранного ментора
   }
 
-  const handleSendMessage = async (message: string) => {
-    const token = localStorage.getItem("access_token")
-    if (!token || !selectedMentorId) return
-
-    try {
-      const res = await fetch("http://localhost:8000/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          prompt: message,
-          mentor_id: selectedMentorId,
-        }),
-      })
-
-      const data = await res.json()
-      console.log("AI ответ:", data.response)
-    } catch (err) {
-      console.error("Ошибка отправки сообщения", err)
-    }
-  }
-
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <LogoLoader size={96} />
-        <p className="mt-4 text-gray-500 text-sm">Загружаем чаты...</p>
+      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-slate-500">
+        <LogoLoader size={80} />
+        <p className="text-sm font-medium">Загружаем чаты...</p>
       </div>
     )
   }
 
   return (
-    <div className="flex h-full">
-      <Sidebar
-        mentors={mentors}
-        onSelect={setSelectedMentorId}
-        onDelete={handleDeleteMentor}  // передаем колбэк удаления
-      />
-      <div className="flex-1 ml-4">
+    <div className="flex h-[calc(100vh-220px)] min-h-[600px] w-full flex-col gap-4 overflow-hidden lg:flex-row">
+      <div className="flex-none overflow-hidden rounded-3xl">
+        <Sidebar mentors={mentors} onSelect={setSelectedMentorId} onDelete={handleDeleteMentor} />
+      </div>
+      <div className="flex h-full min-h-[480px] flex-1 overflow-hidden">
         {selectedMentorId ? (
-          <ChatWindow
-            selectedMentorId={selectedMentorId}
-            onSendMessage={handleSendMessage}
-          />
+          <ChatWindow selectedMentorId={selectedMentorId} />
         ) : (
-          <p>Выберите ментора слева.</p>  // Сообщение, если ментора не выбрано
+          <div className="flex h-full w-full items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white/75 p-10 text-center text-sm text-slate-500 shadow-xl shadow-slate-200/60">
+            Выберите наставника слева, чтобы продолжить диалог.
+          </div>
         )}
       </div>
     </div>

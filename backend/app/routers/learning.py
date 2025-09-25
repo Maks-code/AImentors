@@ -10,11 +10,17 @@ from app.models import LearningPlan, Module, Lesson, Task, Progress
 from app.models.user import User
 from app.auth.jwt_handler import get_current_user
 from app.schemas.learning import (
-    LearningPlanCreate, LearningPlanResponse,
-    ModuleCreate, ModuleResponse,
-    LessonCreate, LessonResponse,
-    TaskCreate, TaskResponse,
-    ProgressCreate, ProgressResponse
+    LearningPlanCreate,
+    LearningPlanResponse,
+    LearningPlanDetailResponse,
+    ModuleCreate,
+    ModuleResponse,
+    LessonCreate,
+    LessonResponse,
+    TaskCreate,
+    TaskResponse,
+    ProgressCreate,
+    ProgressResponse,
 )
 
 router = APIRouter(prefix="/learning", tags=["Learning"])
@@ -47,7 +53,11 @@ def get_plans(db: Session = Depends(get_db), current_user: User = Depends(get_cu
             .joinedload(Lesson.tasks),
             joinedload(LearningPlan.mentor)
         )
-        .filter(LearningPlan.user_id == current_user.id)
+        .filter(
+            LearningPlan.user_id == current_user.id,
+            LearningPlan.status.in_(["confirmed", "completed"]),
+        )
+        .order_by(LearningPlan.created_at.desc())
         .all()
     )
     return plans
@@ -63,13 +73,62 @@ def delete_plan(plan_id: UUID, db: Session = Depends(get_db), current_user: User
     )
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
-    db.delete(plan)
+    if plan.status == "deleted":
+        return {"message": "Plan already deleted"}
+
+    plan.status = "deleted"
     db.commit()
-    return {"message": "Plan deleted successfully"}
+    db.refresh(plan)
+    return {"message": "Plan deleted successfully", "plan_id": plan.id}
 
 
-@router.get("/plans/{plan_id}", response_model=LearningPlanResponse)
+@router.get("/plans/{plan_id}", response_model=LearningPlanDetailResponse)
 def get_plan(plan_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    plan = (
+        db.query(LearningPlan)
+        .options(
+            joinedload(LearningPlan.modules)
+            .joinedload(Module.lessons)
+            .joinedload(Lesson.tasks)
+        )
+        .filter(and_(LearningPlan.id == plan_id, LearningPlan.user_id == current_user.id))
+        .first()
+    )
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    if plan.status not in {"confirmed", "completed"}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Plan is not confirmed")
+
+    lesson_ids: list[UUID] = []
+    for module in plan.modules:
+        for lesson in module.lessons:
+            lesson_ids.append(lesson.id)
+
+    progress_map: dict[UUID, str] = {}
+    if lesson_ids:
+        progress_rows = (
+            db.query(Progress.lesson_id, Progress.status)
+            .filter(
+                Progress.user_id == current_user.id,
+                Progress.lesson_id.in_(lesson_ids),
+            )
+            .all()
+        )
+        progress_map = {row[0]: row[1] for row in progress_rows}
+
+    # ensure deterministic ordering when serializing nested entities
+    plan.modules.sort(key=lambda module: module.order_index)
+    for module in plan.modules:
+        module.lessons.sort(key=lambda lesson: lesson.order_index)
+        for lesson in module.lessons:
+            lesson.tasks.sort(key=lambda task: task.order_index)
+            lesson.user_progress_status = progress_map.get(lesson.id)
+    return plan
+
+
+@router.get("/plans/{plan_id}/status")
+def get_plan_status(plan_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     plan = (
         db.query(LearningPlan)
         .filter(and_(LearningPlan.id == plan_id, LearningPlan.user_id == current_user.id))
@@ -77,7 +136,8 @@ def get_plan(plan_id: UUID, db: Session = Depends(get_db), current_user: User = 
     )
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
-    return plan
+
+    return {"plan_id": plan.id, "status": plan.status}
 
 
 # -------- Modules --------
@@ -225,9 +285,8 @@ def create_progress(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # 1) Проверяем, что урок принадлежит плану текущего пользователя
-    lesson = (
-        db.query(Lesson)
+    lesson_with_plan = (
+        db.query(Lesson, LearningPlan.id.label("plan_id"))
         .join(Module, Lesson.module_id == Module.id)
         .join(LearningPlan, Module.plan_id == LearningPlan.id)
         .filter(
@@ -238,11 +297,12 @@ def create_progress(
         )
         .first()
     )
-    if not lesson:
-        # либо урок не существует, либо он не в вашем плане
+
+    if not lesson_with_plan:
         raise HTTPException(status_code=403, detail="Lesson not found or not owned by you")
 
-    # 2) Идемпотентность: если запись существует — обновляем; иначе создаём
+    lesson_obj, plan_id = lesson_with_plan
+
     db_progress = (
         db.query(Progress)
         .filter(
@@ -255,19 +315,57 @@ def create_progress(
     )
 
     if db_progress:
-        # обновляем только присланные поля
         if progress.status is not None:
             db_progress.status = progress.status
         if progress.score is not None:
             db_progress.score = progress.score
     else:
         db_progress = Progress(
-            user_id=current_user.id,      # берём из токена
-            lesson_id=progress.lesson_id,
+            user_id=current_user.id,
+            lesson_id=lesson_obj.id,
             status=progress.status or "not_started",
             score=progress.score,
         )
         db.add(db_progress)
+
+    # Ensure current changes are visible for aggregation
+    db.flush()
+
+    plan = (
+        db.query(LearningPlan)
+        .filter(
+            and_(
+                LearningPlan.id == plan_id,
+                LearningPlan.user_id == current_user.id,
+            )
+        )
+        .first()
+    )
+
+    if plan and plan.status != "deleted":
+        total_lessons = (
+            db.query(Lesson.id)
+            .join(Module, Lesson.module_id == Module.id)
+            .filter(Module.plan_id == plan_id)
+            .count()
+        )
+
+        completed_lessons = (
+            db.query(Progress.id)
+            .join(Lesson, Progress.lesson_id == Lesson.id)
+            .join(Module, Lesson.module_id == Module.id)
+            .filter(
+                Module.plan_id == plan_id,
+                Progress.user_id == current_user.id,
+                Progress.status == "completed",
+            )
+            .count()
+        )
+
+        if total_lessons and completed_lessons >= total_lessons:
+            plan.status = "completed"
+        elif plan.status == "completed":
+            plan.status = "confirmed"
 
     db.commit()
     db.refresh(db_progress)

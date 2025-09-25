@@ -1,5 +1,5 @@
 # app/schemas/learning.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from uuid import UUID
 from typing import Optional, List, Any
 from datetime import datetime
@@ -75,6 +75,19 @@ class TaskResponse(TaskBase):
 
     class Config:
         orm_mode = True
+
+
+class LessonWithTasks(LessonResponse):
+    tasks: List[TaskResponse] = Field(default_factory=list)
+    user_progress_status: Optional[str] = None
+
+
+class ModuleWithLessons(ModuleResponse):
+    lessons: List[LessonWithTasks] = Field(default_factory=list)
+
+
+class LearningPlanDetailResponse(LearningPlanResponse):
+    modules: List[ModuleWithLessons] = Field(default_factory=list)
 
 
 # -------- Progress --------

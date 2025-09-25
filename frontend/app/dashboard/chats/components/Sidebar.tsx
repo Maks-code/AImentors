@@ -1,6 +1,7 @@
 // Файл: app/(dashboard)/chats/components/Sidebar.tsx
 "use client"
 
+import Image from "next/image"
 import { useState } from "react"
 import { api } from "@/lib/api"
 
@@ -47,73 +48,72 @@ export default function Sidebar({ mentors, onSelect, onDelete }: SidebarProps) {
       setDeleting(false) // завершаем процесс удаления
     }
   }
-
   return (
-    <aside className="w-64 h-full border-r border-gray-200 p-4 overflow-y-auto">
-      <h2 className="text-lg font-semibold mb-4">Мои менторы</h2>
-      {mentors.length === 0 && <p className="text-sm text-gray-500">Нет чатов</p>}
-      <ul className="space-y-2">
+    <aside className="flex h-full w-full flex-col overflow-hidden rounded-3xl border border-white/60 bg-white/75 p-4 shadow-xl shadow-slate-200/60 backdrop-blur-xl lg:w-[300px]">
+      <h2 className="text-lg font-semibold text-slate-900">Мои наставники</h2>
+      <p className="mt-1 text-xs text-slate-400">Выбирайте диалог, чтобы продолжить общение</p>
+
+      {mentors.length === 0 && (
+        <p className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-4 text-center text-sm text-slate-500">
+          Нет активных чатов
+        </p>
+      )}
+
+      <ul className="mt-4 space-y-2 overflow-y-auto pr-1">
         {mentors.map((mentor) => (
           <li key={mentor.id} className="relative">
             <button
               onClick={() => handleSelect(mentor.id)}
-              className={`w-full flex items-center gap-3 text-left p-2 rounded-lg transition ${
+              className={`group flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left transition-all ${
                 activeMentor === mentor.id
-                  ? "bg-blue-100 text-blue-800 font-semibold"
-                  : "hover:bg-gray-100"
+                  ? "border border-sky-200 bg-sky-50 text-sky-700 shadow-md"
+                  : "border border-transparent hover:border-slate-200 hover:bg-white"
               }`}
             >
-              {/* Аватар */}
-<div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
-  {mentor.avatar_url ? (
-    <img
-      src={`/${mentor.avatar_url}`} // ожидаем относительный путь из public
-      alt={mentor.name}
-      className="w-full h-full object-cover"
-    />
-  ) : (
-    <img
-      src="/default-avatar.png" // fallback если нет аватара
-      alt="Нет аватара"
-      className="w-full h-full object-cover"
-    />
-  )}
-</div>
-              <div>
-                <div className="text-sm">{mentor.name}</div>
-                <div className="text-xs text-gray-500">{mentor.subject}</div>
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-100">
+                <Image
+                  src={mentor.avatar_url ? `/${mentor.avatar_url}` : "/default-avatar.png"}
+                  alt={mentor.name || "Аватар наставника"}
+                  width={48}
+                  height={48}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-slate-800">{mentor.name}</p>
+                <p className="text-xs text-slate-400">{mentor.subject}</p>
               </div>
             </button>
-            
-            {/* Кнопка удаления */}
+
             <button
-              onClick={() => setShowConfirmDelete(mentor.id)} // показываем окно подтверждения
-              className="absolute top-2 right-2 text-red-600 hover:text-red-800"
+              onClick={() => setShowConfirmDelete(mentor.id)}
+              className="absolute top-2 right-2 rounded-full bg-rose-50 px-2 py-1 text-xs text-rose-500 shadow hover:bg-rose-100"
               title="Удалить историю"
-              disabled={deleting} // блокируем кнопку, пока идет процесс удаления
+              disabled={deleting}
             >
-              🗑️
+              ✕
             </button>
 
-            {/* Модальное окно с подтверждением удаления */}
             {showConfirmDelete === mentor.id && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-                <div className="bg-white p-6 rounded-lg shadow-lg w-80">
-                  <h3 className="text-xl mb-4">Подтвердите удаление</h3>
-                  <p>Вы уверены, что хотите удалить всю историю чатов с этим наставником?</p>
-                  <div className="mt-4 flex justify-between">
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 backdrop-blur-sm">
+                <div className="w-[320px] space-y-4 rounded-2xl border border-white/60 bg-white/95 p-6 text-slate-600 shadow-2xl">
+                  <h3 className="text-lg font-semibold text-slate-900">Удалить историю чата?</h3>
+                  <p className="text-sm">
+                    Вы уверены, что хотите удалить переписку с наставником <span className="font-semibold">{mentor.name}</span>? Вернуть историю будет невозможно.
+                  </p>
+                  <div className="flex items-center justify-end gap-2">
                     <button
-                      onClick={() => setShowConfirmDelete(null)} // закрываем окно подтверждения
-                      className="bg-gray-200 text-black px-4 py-2 rounded"
+                      onClick={() => setShowConfirmDelete(null)}
+                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:-translate-y-0.5"
                     >
                       Отмена
                     </button>
                     <button
-                      onClick={() => handleDelete(mentor.id)} // вызываем метод удаления
-                      className="bg-red-500 text-white px-4 py-2 rounded"
-                      disabled={deleting} // блокируем кнопку, пока идет процесс удаления
+                      onClick={() => handleDelete(mentor.id)}
+                      className="rounded-full bg-gradient-to-r from-rose-300 to-rose-400 px-4 py-2 text-sm font-semibold text-rose-900 shadow hover:-translate-y-0.5"
+                      disabled={deleting}
                     >
-                      {deleting ? 'Удаление...' : 'Да, удалить'}
+                      {deleting ? "Удаляем…" : "Удалить"}
                     </button>
                   </div>
                 </div>

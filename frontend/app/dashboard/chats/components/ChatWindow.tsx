@@ -4,8 +4,38 @@
 // Надо чото решить с автопрокруткой тк щас она крутит от самого первого сообщения до последнего а это нагрузка
 // надо сделать пагинацию для норм загрузки
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import PlanMessage from "./PlanMessage"
+
+type PlanTask = {
+  id?: string
+  question?: string
+  title?: string
+  type?: string
+}
+
+type PlanLesson = {
+  id?: string
+  title?: string
+  type?: string
+  tasks?: PlanTask[] | null
+}
+
+type PlanModule = {
+  id?: string
+  title?: string
+  description?: string
+  lessons?: PlanLesson[] | null
+}
+
+type PlanSnapshot = {
+  id?: string
+  title?: string
+  description?: string
+  modules?: PlanModule[] | null
+}
+
+type PlanStatus = "active" | "confirmed" | "completed" | "deleted"
 
 interface Message {
   role?: "user" | "assistant"
@@ -13,16 +43,31 @@ interface Message {
   prompt?: string
   response?: string
   created_at?: string
-  // плановые поля
-  planDraft?: any
+  planDraft?: PlanSnapshot | null
   plan_id?: string
-  plan_snapshot?: any
-  plan_status?: "active" | "confirmed" | "deleted"
+  plan_snapshot?: PlanSnapshot | null
+  plan_status?: PlanStatus
 }
 
 interface ChatWindowProps {
   selectedMentorId: string | null
-  onSendMessage: (message: string) => void
+}
+
+interface ChatHistoryItem {
+  id: string
+  prompt: string
+  response: string
+  created_at: string
+  plan_id?: string | null
+  plan_snapshot?: PlanSnapshot | null
+  plan_status?: PlanStatus | null
+}
+
+interface ChatSendResponse {
+  response?: string
+  planDraft?: PlanSnapshot | null
+  plan_id?: string | null
+  plan_status?: PlanStatus | null
 }
 
 function TypingIndicator() {
@@ -35,7 +80,7 @@ function TypingIndicator() {
   )
 }
 
-export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWindowProps) {
+export default function ChatWindow({ selectedMentorId }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
@@ -44,17 +89,26 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
   const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 
   // хелпер: подтянуть статус плана и обновить конкретное сообщение
-  const syncPlanStatus = async (planId: string) => {
+  const syncPlanStatus = useCallback(async (planId: string) => {
     try {
       const token = localStorage.getItem("access_token")
       if (!token) return
 
-      const res = await fetch(`${base}/learning/plans/${planId}`, {
+      const res = await fetch(`${base}/learning/plans/${planId}/status`, {
         headers: { Authorization: `Bearer ${token}` },
       })
+      if (res.status === 404) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.plan_id === planId ? { ...m, plan_status: "deleted" } : m
+          )
+        )
+        return
+      }
+
       if (!res.ok) return
-      const plan = await res.json()
-      const status = (plan?.status as Message["plan_status"]) || "active"
+      const payload = await res.json()
+      const status = (payload?.status as PlanStatus) || "active"
 
       setMessages((prev) =>
         prev.map((m) =>
@@ -64,7 +118,7 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
     } catch {
       /* noop */
     }
-  }
+  }, [base])
 
   const handleConfirm = async (plan_id: string) => {
     try {
@@ -134,34 +188,40 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
           `${base}/chat/history/${selectedMentorId}?limit=${limit}&offset=${offset}`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
-        const data = await res.json()
+        const data: unknown = await res.json()
+        const history: ChatHistoryItem[] = Array.isArray(data) ? (data as ChatHistoryItem[]) : []
 
-        // ожидаем, что бэк (желательно) вернёт plan_status; если нет — пусть будет undefined
-        const formatted: Message[] = data.flatMap((m: any) => [
-          { role: "user", content: m.prompt, created_at: m.created_at },
-          m.plan_snapshot
+        const formatted: Message[] = history.flatMap((item) => {
+          const userMessage: Message = {
+            role: "user",
+            content: item.prompt,
+            created_at: item.created_at,
+          }
+
+          const assistantMessage: Message = item.plan_snapshot
             ? {
                 role: "assistant",
-                content: m.response,
-                created_at: m.created_at,
-                plan_snapshot: m.plan_snapshot,
-                plan_id: m.plan_id,
-                plan_status: m.plan_status as Message["plan_status"] | undefined,
+                content: item.response,
+                created_at: item.created_at,
+                plan_snapshot: item.plan_snapshot,
+                plan_id: item.plan_id ?? undefined,
+                plan_status: item.plan_status ?? undefined,
               }
             : {
                 role: "assistant",
-                content: m.response,
-                created_at: m.created_at,
-              },
-        ])
+                content: item.response,
+                created_at: item.created_at,
+              }
+
+          return [userMessage, assistantMessage]
+        })
 
         setMessages(formatted)
 
-        // если статуса нет, но есть plan_id — подтянем его по API (для старых сообщений)
         const plansToSync = formatted
           .filter((m) => m.plan_id && !m.plan_status)
-          .map((m) => m.plan_id!) // non-null
-        // последовательный sync (их обычно немного)
+          .map((m) => m.plan_id!)
+
         for (const pid of plansToSync) {
           await syncPlanStatus(pid)
         }
@@ -171,7 +231,7 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
     }
 
     fetchHistory()
-  }, [selectedMentorId])
+  }, [selectedMentorId, base, syncPlanStatus])
 
   // автоскролл вниз
   useEffect(() => {
@@ -205,7 +265,7 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
         }),
       })
 
-      const data = await res.json()
+      const data: ChatSendResponse = await res.json()
       const aiAnswer = data?.response
       if (!aiAnswer || String(aiAnswer).trim() === "") {
         throw new Error("Модель не вернула ответ. Попробуйте ещё раз.")
@@ -215,8 +275,15 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
         role: "assistant",
         content: aiAnswer,
         created_at: new Date().toISOString(),
-        ...(data.planDraft ? { planDraft: data.planDraft } : {}),
-        ...(data.plan_id ? { plan_id: data.plan_id, plan_status: "active" } : {}), // новый план = активный
+      }
+
+      if (data.planDraft) {
+        aiMessage.planDraft = data.planDraft
+      }
+
+      if (data.plan_id) {
+        aiMessage.plan_id = data.plan_id
+        aiMessage.plan_status = data.plan_status ?? "active"
       }
 
       setMessages((prev) => [...prev, aiMessage])
@@ -234,9 +301,8 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
   }
 
   return (
-    <div className="flex flex-col h-full border rounded-lg p-4">
-      {/* История сообщений */}
-      <div className="flex-1 overflow-y-auto space-y-2 mb-4 max-h-[65vh]">
+    <div className="flex h-full flex-col gap-4 rounded-3xl border border-white/60 bg-white/75 p-5 shadow-xl shadow-slate-200/70 backdrop-blur-xl">
+      <div className="flex-1 space-y-3 overflow-y-auto pr-1">
         {messages.map((msg, idx) => {
           const isUser = msg.role === "user"
           const showPlan = Boolean(msg.planDraft || msg.plan_snapshot)
@@ -245,7 +311,7 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
           return (
             <div
               key={idx}
-              className={`space-y-1 mb-4 flex flex-col ${isUser ? "items-end" : "items-start"}`}
+              className={`space-y-1 flex flex-col ${isUser ? "items-end" : "items-start"}`}
             >
               {showPlan ? (
                 <PlanMessage
@@ -265,8 +331,10 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
                 />
               ) : (
                 <div
-                  className={`p-2 rounded text-sm whitespace-pre-wrap max-w-[75%] ${
-                    isUser ? "bg-blue-100" : "bg-gray-100"
+                  className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-md whitespace-pre-wrap transition ${
+                    isUser
+                      ? "bg-gradient-to-br from-sky-200/80 to-indigo-200/80 text-slate-800"
+                      : "bg-slate-50/90 text-slate-600"
                   }`}
                 >
                   {msg.content}
@@ -274,7 +342,7 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
               )}
 
               {msg.created_at && (
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-slate-400">
                   {new Date(msg.created_at).toLocaleString()}
                 </div>
               )}
@@ -283,8 +351,8 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
         })}
 
         {loading && (
-          <div className="flex justify-start mb-2">
-            <div className="bg-gray-100 p-2 rounded text-sm max-w-[80%]">
+          <div className="flex justify-start">
+            <div className="max-w-[80%] rounded-2xl bg-slate-50/80 px-4 py-3 text-sm text-slate-500 shadow-inner">
               <TypingIndicator />
             </div>
           </div>
@@ -292,21 +360,24 @@ export default function ChatWindow({ selectedMentorId, onSendMessage }: ChatWind
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Поле ввода */}
-      <div className="flex gap-2">
+      <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white/90 p-3 shadow-inner">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          className="flex-1 border rounded p-2"
+          className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-200"
           placeholder="Введите сообщение..."
           disabled={loading}
         />
         <button
           onClick={handleSend}
           disabled={loading}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition ${
+            loading
+              ? "cursor-not-allowed bg-slate-100 text-slate-400"
+              : "bg-gradient-to-r from-sky-300 via-indigo-300 to-violet-300 text-slate-900 shadow-lg shadow-sky-100/60 hover:-translate-y-0.5"
+          }`}
         >
           Отправить
         </button>

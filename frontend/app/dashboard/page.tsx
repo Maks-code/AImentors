@@ -1,92 +1,152 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
-import { UserCircle, MessageCircle, Users, Calendar, Settings, Star } from "lucide-react"
+import { useRouter } from "next/navigation";
+import {
+  MessageCircle,
+  UserCircle,
+  Users,
+  Calendar,
+  Settings,
+  Star,
+} from "lucide-react";
+
+interface QuickAction {
+  icon: typeof MessageCircle;
+  label: string;
+  description: string;
+  href: string;
+}
+
+const quickActions: QuickAction[] = [
+  {
+    icon: MessageCircle,
+    label: "Чаты",
+    description: "Обсудите задачи с наставником и запросите новый план",
+    href: "/dashboard/chats",
+  },
+  {
+    icon: UserCircle,
+    label: "Профиль",
+    description: "Обновите данные аккаунта и настройте уведомления",
+    href: "/dashboard/profile",
+  },
+  {
+    icon: Users,
+    label: "Менторы",
+    description: "Выберите эксперта под цели и опыт",
+    href: "/dashboard/mentors",
+  },
+  {
+    icon: Calendar,
+    label: "Обучение",
+    description: "Продолжите работу над подтверждёнными планами",
+    href: "/dashboard/learning",
+  },
+  {
+    icon: Settings,
+    label: "Настройки",
+    description: "Персонализируйте приложение под свои привычки",
+    href: "/dashboard/settings",
+  },
+];
 
 export default function DashboardHome() {
-  const router = useRouter()
+  const router = useRouter();
 
   return (
-    <div className="min-h-screen w-full p-6 bg-gradient-to-br from-blue-900 via-indigo-800 to-blue-700 animate-gradient">
-      <div className="max-w-5xl mx-auto space-y-8">
-        
-        {/* Приветствие */}
-        <Card className="bg-white/20 backdrop-blur-xl shadow-lg border border-white/30 p-6">
-          <h1 className="text-2xl font-bold text-white">Добро пожаловать, [Имя пользователя] 👋</h1>
-          <p className="text-white/80 mt-2">Ваш персональный центр обучения и общения с AI-менторами</p>
-        </Card>
+    <div className="space-y-10">
+      <section className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/70 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl sm:p-10">
+        <div className="absolute -top-16 right-10 h-44 w-44 rounded-full bg-sky-200/40 blur-3xl" />
+        <div className="absolute -bottom-20 left-0 h-64 w-64 rounded-full bg-indigo-200/35 blur-3xl" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-5">
+            <span className="inline-flex items-center gap-2 rounded-full bg-sky-100/90 px-3 py-1 text-xs font-medium text-sky-700">
+              <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
+              Добро пожаловать
+            </span>
+            <div className="space-y-4">
+              <h1 className="text-3xl font-semibold text-slate-900 sm:text-4xl">
+                Управляйте обучением, общайтесь с наставниками и отмечайте прогресс
+              </h1>
+              <p className="max-w-2xl text-base text-slate-500">
+                На этой панели вы видите все ключевые разделы. Здесь легко продолжить план, написать наставнику или обновить профиль. Начните с того, что важно сейчас.
+              </p>
+            </div>
+          </div>
+          <div className="group relative w-full max-w-sm overflow-hidden rounded-3xl bg-gradient-to-br from-sky-200/80 to-indigo-200/80 p-6 text-slate-900 shadow-xl shadow-sky-100/70">
+            <div className="absolute -top-4 left-8 h-24 w-24 rounded-full bg-white/60 blur-3xl transition-transform duration-300 group-hover:translate-y-3" />
+            <div className="absolute -bottom-12 right-6 h-28 w-28 rounded-full bg-white/50 blur-3xl transition-transform duration-300 group-hover:-translate-y-2" />
+            <div className="relative space-y-4">
+              <p className="text-xs uppercase tracking-[0.4em] text-slate-600/80">Следующий шаг</p>
+              <h2 className="text-2xl font-semibold">Загляните в раздел обучения</h2>
+              <p className="text-sm text-slate-600">
+                Проверяйте актуальные уроки, отмечайте выполненные задания и завершайте планы.
+              </p>
+              <button
+                onClick={() => router.push("/dashboard/learning")}
+                className="inline-flex items-center justify-center rounded-full bg-white/90 px-5 py-2 text-sm font-semibold text-slate-800 shadow-md shadow-slate-200 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white"
+              >
+                Перейти к обучению
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
 
-        {/* Быстрые действия */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          <Card 
-            onClick={() => router.push("/dashboard/chats")}
-            className="cursor-pointer bg-white/20 hover:scale-105 hover:shadow-xl transition border border-white/30 backdrop-blur-xl text-center p-4"
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {quickActions.map(({ icon: Icon, label, description, href }) => (
+          <button
+            key={label}
+            onClick={() => router.push(href)}
+            className="group relative flex h-full flex-col gap-3 overflow-hidden rounded-2xl border border-white/60 bg-white/70 p-5 text-left shadow-lg shadow-slate-200/70 transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl hover:shadow-sky-100/70"
           >
-            <MessageCircle className="mx-auto h-8 w-8 text-indigo-300" />
-            <p className="mt-2 text-sm text-white">Чаты</p>
-          </Card>
-          <Card 
-            onClick={() => router.push("/dashboard/profile")}
-            className="cursor-pointer bg-white/20 hover:scale-105 hover:shadow-xl transition border border-white/30 backdrop-blur-xl text-center p-4"
-          >
-            <UserCircle className="mx-auto h-8 w-8 text-indigo-300" />
-            <p className="mt-2 text-sm text-white">Профиль</p>
-          </Card>
-          <Card 
-            onClick={() => router.push("/dashboard/mentors")}
-            className="cursor-pointer bg-white/20 hover:scale-105 hover:shadow-xl transition border border-white/30 backdrop-blur-xl text-center p-4"
-          >
-            <Users className="mx-auto h-8 w-8 text-indigo-300" />
-            <p className="mt-2 text-sm text-white">Менторы</p>
-          </Card>
-          <Card 
-            onClick={() => router.push("/dashboard/plan")}
-            className="cursor-pointer bg-white/20 hover:scale-105 hover:shadow-xl transition border border-white/30 backdrop-blur-xl text-center p-4"
-          >
-            <Calendar className="mx-auto h-8 w-8 text-indigo-300" />
-            <p className="mt-2 text-sm text-white">План</p>
-          </Card>
-          <Card 
-            onClick={() => router.push("/dashboard/settings")}
-            className="cursor-pointer bg-white/20 hover:scale-105 hover:shadow-xl transition border border-white/30 backdrop-blur-xl text-center p-4"
-          >
-            <Settings className="mx-auto h-8 w-8 text-indigo-300" />
-            <p className="mt-2 text-sm text-white">Настройки</p>
-          </Card>
+            <span className="absolute inset-0 bg-gradient-to-br from-white/60 via-white/0 to-white/0 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+            <span className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600 shadow-inner shadow-white">
+              <Icon className="h-5 w-5" />
+            </span>
+            <div className="relative space-y-1">
+              <p className="text-base font-semibold text-slate-900">{label}</p>
+              <p className="text-xs text-slate-500">{description}</p>
+            </div>
+          </button>
+        ))}
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/70 p-6 shadow-xl shadow-slate-200/70 backdrop-blur-xl sm:p-8">
+          <div className="absolute -top-20 right-4 h-36 w-36 rounded-full bg-sky-100 blur-3xl" />
+          <div className="relative space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-sky-400" />
+              <span className="text-xs font-semibold uppercase tracking-[0.35em] text-sky-500">Прогресс</span>
+            </div>
+            <h3 className="text-2xl font-semibold text-slate-900">Прогресс обучения</h3>
+            <p className="text-sm text-slate-500">
+              Как только вы начнёте отмечать уроки, здесь появится наглядная статистика. Возвращайтесь чаще, чтобы видеть результаты.
+            </p>
+            <div className="mt-6 h-32 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60" />
+          </div>
         </div>
 
-        {/* Заглушки */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="bg-white/20 backdrop-blur-xl border border-white/30 shadow-lg p-4">
-            <CardHeader>
-              <CardTitle className="text-white">Прогресс обучения</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-white/70">Здесь будет график прогресса по урокам</p>
-              <div className="h-32 bg-white/10 rounded mt-4 flex items-center justify-center text-white/50">
-                [Chart placeholder]
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/20 backdrop-blur-xl border border-white/30 shadow-lg p-4">
-            <CardHeader>
-              <CardTitle className="text-white">Достижения</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-white/70">Ваши трофеи и бейджи</p>
-              <div className="flex gap-3 mt-4">
-                <Star className="text-yellow-400 w-8 h-8" />
-                <Star className="text-yellow-400 w-8 h-8" />
-                <Star className="text-gray-400 w-8 h-8" />
-              </div>
-            </CardContent>
-          </Card>
+        <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/70 p-6 shadow-xl shadow-slate-200/70 backdrop-blur-xl sm:p-8">
+          <div className="absolute -bottom-16 left-8 h-40 w-40 rounded-full bg-violet-100 blur-3xl" />
+          <div className="relative space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-violet-400" />
+              <span className="text-xs font-semibold uppercase tracking-[0.35em] text-violet-500">Достижения</span>
+            </div>
+            <h3 className="text-2xl font-semibold text-slate-900">Ваши трофеи</h3>
+            <p className="text-sm text-slate-500">
+              Получайте значки за завершённые планы и активность. Награды помогут отслеживать путь развития.
+            </p>
+            <div className="flex gap-3 pt-2 text-violet-400">
+              <Star className="h-8 w-8" />
+              <Star className="h-8 w-8" />
+              <Star className="h-8 w-8 opacity-40" />
+            </div>
+          </div>
         </div>
-
-      </div>
+      </section>
     </div>
-  )
+  );
 }

@@ -157,6 +157,7 @@ async def chat(
         content_text: str = ""
         plan_draft: dict | None = None
         plan_id = None
+        plan_status_value: str | None = None
 
         if isinstance(raw, dict) and ("reply" in raw or "planDraft" in raw):
             # уже распарсили в utils
@@ -283,6 +284,7 @@ async def chat(
             db.commit()
             db.refresh(new_plan)
             plan_id = new_plan.id
+            plan_status_value = new_plan.status
             print("✅ Plan created with nested items:", plan_id)
 
         # сохраняем в БД (в чат кладем уже нормальные данные)
@@ -302,7 +304,8 @@ async def chat(
         return {
             "response": formatted_plan,
             "planDraft": plan_draft or None,
-            "plan_id": str(plan_id) if plan_id else None
+            "plan_id": str(plan_id) if plan_id else None,
+            "plan_status": plan_status_value,
         }
     except HTTPException:
         db.rollback()
@@ -360,17 +363,38 @@ def get_chat_history_with_mentor(
         .all()
     )
 
-    return [
-    {
-        "id": str(msg.id),
-        "prompt": msg.prompt,
-        "response": msg.response,
-        "created_at": msg.created_at.isoformat(),
-        "plan_id": str(msg.plan_id) if msg.plan_id else None,
-        "plan_snapshot": msg.plan_snapshot,  # ⚡ теперь фронт получит JSON плана
-    }
-    for msg in messages
-]
+    plan_ids = [msg.plan_id for msg in messages if msg.plan_id is not None]
+
+    plan_status_map: dict[UUID, str] = {}
+    if plan_ids:
+        plan_rows = (
+            db.query(LearningPlan.id, LearningPlan.status)
+            .filter(LearningPlan.id.in_(plan_ids))
+            .all()
+        )
+        plan_status_map = {row[0]: row[1] for row in plan_rows}
+
+    history = []
+    for msg in messages:
+        raw_status = None
+        if msg.plan_id:
+            raw_status = plan_status_map.get(msg.plan_id)
+            if raw_status is None:
+                raw_status = "deleted"
+
+        history.append(
+            {
+                "id": str(msg.id),
+                "prompt": msg.prompt,
+                "response": msg.response,
+                "created_at": msg.created_at.isoformat(),
+                "plan_id": str(msg.plan_id) if msg.plan_id else None,
+                "plan_snapshot": msg.plan_snapshot,
+                "plan_status": raw_status,
+            }
+        )
+
+    return history
 # удалить историю чата пользователя с ментором
 @router.delete("/history/{mentor_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_chat_history_with_mentor(

@@ -1,33 +1,8 @@
 "use client";
 
-// -----------------------------------------------------------------------------
-// ProfilePage.tsx — расширенный профиль пользователя с «игровыми» блоками
-// -----------------------------------------------------------------------------
-// Блоки:
-//   1. Карточка профиля (аватар + базовые данные)
-//   2. Ваш прогресс (уровень, XP‑бар, серия, очки за неделю)
-//   3. Мои менторы (горизонтальный список активных ИИ‑наставников)
-//   4. План обучения (аккордеон предстоящих уроков/ДЗ)
-//   5. Достижения (бейджи)
-//   6. Настройки уведомлений (тогглы)
-//
-// Все данные кроме самого user приходят из `dummy*`‑констант. Под каждым есть
-// TODO‑комментарий: на какой эндпоинт их заменить.
-// -----------------------------------------------------------------------------
-
+import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -51,12 +26,13 @@ import {
   Trophy,
   Play,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import AvatarPicker from "./components/AvatarPicker";
 import LogoLoader from "@/components/LogoLoader";
 
-// -----------------------------------------------------------------------------
-// Типы
-// -----------------------------------------------------------------------------
 interface User {
   id: string;
   email: string;
@@ -65,15 +41,16 @@ interface User {
   role: string;
   created_at: string;
   avatar_url?: string;
-  // В будущем: notification prefs, security, etc.
 }
 
-// -----------------------------------------------------------------------------
-// DUMMY DATA (заменить на реальные запросы)
-// -----------------------------------------------------------------------------
-/**
- * TODO: заменить на GET /users/me/progress
- */
+interface ActiveMentor {
+  id: string;
+  name: string;
+  subject?: string;
+  avatar_url?: string;
+  todayLesson?: boolean;
+}
+
 const dummyProgress = {
   level: 3,
   currentXP: 220,
@@ -82,10 +59,6 @@ const dummyProgress = {
   streak: 7,
 };
 
-
-/**
- * TODO: заменить на GET /users/me/schedule?limit=5
- */
 const dummySchedule = [
   {
     id: 1,
@@ -107,70 +80,33 @@ const dummySchedule = [
   },
 ];
 
-/**
- * TODO: заменить на GET /users/me/achievements
- */
 const dummyAchievements = [
   { id: "streak-7", name: "7‑day Streak", icon: <Flame size={20} /> },
   { id: "xp-1000", name: "1000 XP", icon: <Trophy size={20} /> },
   { id: "lvl-3", name: "Level 3", icon: <Play size={20} /> },
 ];
 
-// -----------------------------------------------------------------------------
-// Компонент
-// -----------------------------------------------------------------------------
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Router
-  const router = useRouter();
-  // Менторы
-  const [activeMentors, setActiveMentors] = useState<any[]>([]);
+  const [activeMentors, setActiveMentors] = useState<ActiveMentor[]>([]);
   const [loadingMentors, setLoadingMentors] = useState(true);
-  // ---------------------------------------------------------------------------
-  // Fetch active mentors
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    const fetchMentors = async () => {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        setLoadingMentors(false);
-        return;
-      }
-      try {
-        const res = await fetch("http://localhost:8000/chat/history", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Не удалось получить менторов");
-        const data = await res.json();
-        setActiveMentors(data);
-      } catch (err) {
-        console.error(err);
-        setActiveMentors([]);
-      } finally {
-        setLoadingMentors(false);
-      }
-    };
-    fetchMentors();
-  }, []);
 
-  // dialogs
+  const router = useRouter();
+
   const [editOpen, setEditOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
-
-  // form state
   const [form, setForm] = useState({ full_name: "", bio: "" });
   const [saving, setSaving] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
 
-  // ---------------------------------------------------------------------------
-  // Fetch profile
-  // ---------------------------------------------------------------------------
   useEffect(() => {
     const fetchUser = async () => {
       const token = localStorage.getItem("access_token");
-      if (!token) return;
+      if (!token) {
+        setLoading(false);
+        return;
+      }
       try {
         const res = await fetch("http://localhost:8000/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
@@ -188,9 +124,31 @@ export default function ProfilePage() {
     fetchUser();
   }, []);
 
-  // ---------------------------------------------------------------------------
-  // Save profile (fullname + bio)
-  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const fetchMentors = async () => {
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        setLoadingMentors(false);
+        return;
+      }
+      try {
+        const res = await fetch("http://localhost:8000/chat/history", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Не удалось получить менторов");
+        const data: unknown = await res.json();
+        const formatted = Array.isArray(data) ? (data as ActiveMentor[]) : [];
+        setActiveMentors(formatted);
+      } catch (err) {
+        console.error(err);
+        setActiveMentors([]);
+      } finally {
+        setLoadingMentors(false);
+      }
+    };
+    fetchMentors();
+  }, []);
+
   const handleSaveProfile = async () => {
     if (!user) return;
     setSaving(true);
@@ -204,9 +162,7 @@ export default function ProfilePage() {
         },
         body: JSON.stringify({ full_name: form.full_name, bio: form.bio }),
       });
-      setUser((prev) =>
-        prev ? { ...prev, full_name: form.full_name, bio: form.bio } : prev,
-      );
+      setUser((prev) => (prev ? { ...prev, full_name: form.full_name, bio: form.bio } : prev));
       setEditOpen(false);
     } catch (err) {
       console.error("Ошибка сохранения профиля", err);
@@ -215,9 +171,6 @@ export default function ProfilePage() {
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // Save avatar
-  // ---------------------------------------------------------------------------
   const handleSaveAvatar = async () => {
     if (!selectedAvatar) return;
     const token = localStorage.getItem("access_token");
@@ -231,9 +184,7 @@ export default function ProfilePage() {
         },
         body: JSON.stringify({ avatar_url: selectedAvatar }),
       });
-      setUser((prev) =>
-        prev ? { ...prev, avatar_url: selectedAvatar } : prev,
-      );
+      setUser((prev) => (prev ? { ...prev, avatar_url: selectedAvatar } : prev));
       setAvatarOpen(false);
       setSelectedAvatar(null);
     } catch (err) {
@@ -241,318 +192,272 @@ export default function ProfilePage() {
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <LogoLoader size={96} />
-        <p className="mt-4 text-muted-foreground text-sm">Загружаем профиль…</p>
+      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-slate-500">
+        <LogoLoader size={80} />
+        <p className="text-sm font-medium">Загружаем профиль…</p>
       </div>
     );
   }
 
   if (!user) {
-    return <p className="p-6">Профиль не найден…</p>;
+    return <p className="text-sm text-slate-500">Профиль не найден…</p>;
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start p-6 bg-gradient-to-r from-indigo-200 via-purple-200 to-pink-200 animate-gradient">
-      <div className="w-full max-w-3xl space-y-8">
-      {/* --------------------------------------------------------------------- */}
-      {/* PROFILE CARD                                                         */}
-      {/* --------------------------------------------------------------------- */}
-      <Card className="bg-white/80 backdrop-blur-sm shadow-lg border-0 hover:scale-[1.02] hover:shadow-xl transition-transform duration-300 overflow-hidden">
-        {/* Cover header */}
-        <div className="h-24 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 relative">
-          <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2">
-            {user.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt="Аватар"
-                className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-full flex items-center justify-center bg-muted text-3xl font-semibold uppercase text-muted-foreground border-4 border-white shadow-lg">
-                {user.full_name?.[0] ?? "?"}
-              </div>
-            )}
+    <div className="space-y-8">
+      <section className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/75 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl sm:p-10">
+        <div className="absolute -top-16 right-10 h-44 w-44 rounded-full bg-sky-200/40 blur-3xl" />
+        <div className="absolute -bottom-20 left-6 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center">
+          <div className="relative mx-auto w-fit">
+            <div className="h-32 w-32 overflow-hidden rounded-3xl border-4 border-white shadow-lg shadow-slate-300">
+              {user.avatar_url ? (
+                <Image src={user.avatar_url} alt="Аватар" width={128} height={128} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-slate-100 text-3xl font-semibold uppercase text-slate-400">
+                  {user.full_name?.[0] ?? "?"}
+                </div>
+              )}
+            </div>
             <button
               onClick={() => setAvatarOpen(true)}
-              className="absolute bottom-1 right-1 bg-white/80 border shadow rounded-full p-2 hover:bg-indigo-100"
+              className="absolute -bottom-2 -right-2 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-lg shadow-slate-200 transition hover:-translate-y-0.5"
             >
-              <Camera size={16} />
+              <Camera size={14} /> Сменить
             </button>
+          </div>
+          <div className="flex-1 space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge className="bg-sky-100 text-sky-600">{user.role}</Badge>
+              <Badge variant="outline" className="border-slate-200 text-slate-500">
+                На платформе с {new Date(user.created_at).toLocaleDateString()}
+              </Badge>
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-semibold text-slate-900 md:text-4xl">{user.full_name || "Без имени"}</h1>
+              <p className="max-w-2xl text-sm text-slate-500">
+                {user.bio || "Добавьте краткую информацию о себе, чтобы наставники лучше понимали ваши цели."}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+              <Badge variant="secondary">Lvl {dummyProgress.level}</Badge>
+              <Badge variant="outline" className="border-emerald-200 text-emerald-600">
+                🔥 Серия {dummyProgress.streak} дн.
+              </Badge>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">XP: {dummyProgress.currentXP}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+              <span className="font-medium text-slate-600">Email:</span>
+              <span>{user.email}</span>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                size="sm"
+                onClick={() => setEditOpen(true)}
+                className="rounded-full bg-gradient-to-r from-sky-300 via-indigo-300 to-violet-300 px-5 text-slate-900 shadow-md shadow-sky-100/70 hover:-translate-y-0.5"
+              >
+                <Pencil size={16} className="mr-1" /> Редактировать профиль
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-full border-slate-200 px-5 text-slate-600 shadow-sm hover:-translate-y-0.5"
+                onClick={() => router.push("/dashboard/learning")}
+              >
+                Перейти к обучению
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-white/60 bg-white/75 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-slate-900">Ваш прогресс</h2>
+            <Badge variant="outline" className="border-slate-200 text-slate-500">
+              +{dummyProgress.weeklyPoints} очков за неделю
+            </Badge>
+          </div>
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between text-sm text-slate-500">
+              <span>Уровень {dummyProgress.level}</span>
+              <span>{dummyProgress.currentXP} / {dummyProgress.nextXP} XP</span>
+            </div>
+            <div className="rounded-full bg-slate-100">
+              <Progress
+                value={(dummyProgress.currentXP / dummyProgress.nextXP) * 100}
+                className="h-3 rounded-full"
+              />
+            </div>
+            <div className="grid gap-4 text-sm text-slate-600 sm:grid-cols-2">
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white/80 px-4 py-3">
+                <Flame size={18} className="text-orange-500" /> Серия {dummyProgress.streak} дн.
+              </div>
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white/80 px-4 py-3">
+                <Trophy size={18} className="text-yellow-500" /> Очков за неделю: {dummyProgress.weeklyPoints}
+              </div>
+            </div>
           </div>
         </div>
 
-        <CardContent className="pt-16 text-center space-y-2">
-          <h2 className="text-xl font-semibold text-indigo-700">{user.full_name}</h2>
-          <p className="text-sm text-muted-foreground">{user.role}</p>
-          <div className="flex justify-center gap-4 mt-2">
-            <Badge variant="secondary">Lvl {dummyProgress.level}</Badge>
-            <Badge variant="outline">🔥 {dummyProgress.streak} дн.</Badge>
+        <div className="rounded-3xl border border-white/60 bg-white/75 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl">
+          <h2 className="text-xl font-semibold text-slate-900">Достижения</h2>
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            {dummyAchievements.map((a) => (
+              <div
+                key={a.id}
+                className="flex flex-col items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-center text-sm text-slate-600 shadow-inner"
+              >
+                <span className="text-sky-500">{a.icon}</span>
+                <span className="text-xs font-medium">{a.name}</span>
+              </div>
+            ))}
           </div>
-        </CardContent>
+        </div>
+      </section>
 
-        <CardContent className="space-y-2 text-sm border-t pt-4">
-          <p>
-            <span className="text-muted-foreground">Email:</span> <strong>{user.email}</strong>
+      <section className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-white/60 bg-white/75 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl">
+          <h2 className="text-xl font-semibold text-slate-900">План обучения</h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Детали уроков и домашних заданий появятся здесь после подключения API.
           </p>
-          <p>
-            <span className="text-muted-foreground">Дата регистрации:</span> {new Date(user.created_at).toLocaleDateString()}
-          </p>
-          <div className="mt-2 text-left">
-            <span className="text-muted-foreground">О себе:</span>
-            <p className="italic">{user.bio || "—"}</p>
-          </div>
-        </CardContent>
-
-        <CardFooter className="flex justify-end gap-2">
-          <Button
-            size="sm"
-            onClick={() => setEditOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white active:scale-95 transition-transform"
-          >
-            <Pencil size={16} className="mr-1" /> Редактировать
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* --------------------------------------------------------------------- */}
-      {/* PROGRESS                                                             */}
-      {/* --------------------------------------------------------------------- */}
-      <Card className="bg-white/80 backdrop-blur-sm shadow-lg border-0 hover:scale-[1.02] hover:shadow-xl transition-transform duration-300">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-indigo-600">Ваш прогресс</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between text-sm">
-            <span>Уровень {dummyProgress.level}</span>
-            <span>
-              {dummyProgress.currentXP} / {dummyProgress.nextXP} XP
-            </span>
-          </div>
-          <div className="bg-indigo-100 rounded-full">
-            <Progress
-              value={(dummyProgress.currentXP / dummyProgress.nextXP) * 100}
-              className="h-3 rounded-full"
-            />
-          </div>
-          <div className="flex gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <Flame size={16} className="text-orange-500" /> Серия:
-              {dummyProgress.streak} дн.
-            </div>
-            <div className="flex items-center gap-2">
-              <Trophy size={16} className="text-yellow-500" /> Очков за неделю:
-              {dummyProgress.weeklyPoints}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* --------------------------------------------------------------------- */}
-      {/* ACTIVE MENTORS                                                       */}
-      {/* --------------------------------------------------------------------- */}
-      <Card className="bg-white/80 backdrop-blur-sm shadow-lg border-0 hover:scale-[1.02] hover:shadow-xl transition-transform duration-300">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-indigo-600">Мои менторы</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loadingMentors ? (
-            <p className="text-sm text-muted-foreground">Загружаем...</p>
-          ) : activeMentors.length > 0 ? (
-            <div className="flex gap-4 overflow-x-auto pb-4">
-              {activeMentors.map((m) => (
-                <div
-                  key={m.id}
-                  onClick={() => router.push(`/dashboard/chats?selected=${m.id}`)}                  className="min-w-[140px] rounded-lg border-0 p-3 flex flex-col items-center text-center shadow-sm bg-gradient-to-br from-indigo-50 to-purple-50 hover:shadow-md transition-shadow cursor-pointer hover:bg-indigo-100 hover:scale-105 active:scale-95"
-                  tabIndex={0}
-                  role="button"
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      router.push(`/dashboard/chats/${m.id}`);
-                    }
-                  }}
-                >
-                  <img
-  src={m.avatar_url ? `/${m.avatar_url}` : "/default-avatar.png"}
-  alt={m.name}
-  className="w-12 h-12 rounded-full object-cover mb-2"
-/>
-                  <p className="text-sm font-medium line-clamp-2">{m.name}</p>
-                  {m.todayLesson && (
-                    <Badge variant="secondary" className="mt-2">
-                      Урок сегодня
-                    </Badge>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Нет активных менторов</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* --------------------------------------------------------------------- */}
-      {/* PLAN / SCHEDULE                                                      */}
-      {/* --------------------------------------------------------------------- */}
-      <Card className="bg-white/80 backdrop-blur-sm shadow-lg border-0 hover:scale-[1.02] hover:shadow-xl transition-transform duration-300">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-indigo-600">План обучения</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Accordion type="single" collapsible>
+          <Accordion type="single" collapsible className="mt-4">
             {dummySchedule.map((item) => (
               <AccordionItem value={String(item.id)} key={item.id}>
                 <AccordionTrigger>
-                  <span className="text-left">
+                  <span className="text-left text-sm text-slate-700">
                     {new Date(item.date).toLocaleDateString()} — {item.title}
                   </span>
-                  <Badge className="ml-auto" variant="outline">
+                  <Badge variant="outline" className="ml-auto border-slate-200 text-slate-500">
                     {item.status}
                   </Badge>
                 </AccordionTrigger>
                 <AccordionContent>
-                  {/* TODO: подгрузить детали урока/ДЗ по item.id */}
-                  <p className="text-sm text-muted-foreground">
-                    Подробности урока будут доступны после подключения API.
+                  <p className="text-sm text-slate-500">
+                    Подробности урока станут доступны после подключения API.
                   </p>
                 </AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* --------------------------------------------------------------------- */}
-      {/* ACHIEVEMENTS                                                         */}
-      {/* --------------------------------------------------------------------- */}
-      <Card className="bg-white/80 backdrop-blur-sm shadow-lg border-0 hover:scale-[1.02] hover:shadow-xl transition-transform duration-300">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-indigo-600">Достижения</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {dummyAchievements.map((a) => (
-              <div
-                key={a.id}
-                className="flex flex-col items-center gap-2 p-3 border-0 rounded-lg bg-indigo-50 hover:scale-105 transition-transform"
-              >
-                <span className="text-primary">{a.icon}</span>
-                <span className="text-xs text-center line-clamp-2">
-                  {a.name}
-                </span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+        <div className="rounded-3xl border border-white/60 bg-white/75 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl">
+          <h2 className="text-xl font-semibold text-slate-900">Мои наставники</h2>
+          <p className="mt-2 text-sm text-slate-500">Последние диалоги из раздела чатов.</p>
+          {loadingMentors ? (
+            <div className="mt-6 flex items-center gap-2 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" /> Загружаем наставников…
+            </div>
+          ) : activeMentors.length ? (
+            <div className="mt-5 grid gap-4 sm:grid-cols-3">
+              {activeMentors.map((m) => (
+                <button
+                  key={m.id}
+                  className="flex flex-col items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-5 text-center text-sm text-slate-600 shadow-inner transition hover:-translate-y-0.5"
+                  onClick={() => router.push(`/dashboard/chats?selected=${m.id}`)}
+                >
+                  <div className="h-12 w-12 overflow-hidden rounded-full bg-slate-100">
+                    <Image
+                      src={m.avatar_url ? `/${m.avatar_url}` : "/default-avatar.png"}
+                      alt={m.name}
+                      width={48}
+                      height={48}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <p className="text-sm font-medium line-clamp-2">{m.name}</p>
+                  {m.todayLesson && (
+                    <Badge variant="secondary" className="bg-sky-100 text-sky-600">
+                      Урок сегодня
+                    </Badge>
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-6 text-sm text-slate-500">Нет активных менторов</p>
+          )}
+        </div>
+      </section>
 
-      {/* --------------------------------------------------------------------- */}
-      {/* NOTIFICATION SETTINGS                                                */}
-      {/* --------------------------------------------------------------------- */}
-      <Card className="bg-white/80 backdrop-blur-sm shadow-lg border-0 hover:scale-[1.02] hover:shadow-xl transition-transform duration-300">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-indigo-600">Уведомления</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <div className="flex items-center justify-between">
+      <section className="rounded-3xl border border-white/60 bg-white/75 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl">
+        <h2 className="text-xl font-semibold text-slate-900">Уведомления</h2>
+        <p className="mt-2 text-sm text-slate-500">
+          Настройте напоминания, чтобы не пропускать новые уроки и отчёты.
+        </p>
+        <div className="mt-5 space-y-4 text-sm">
+          <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/80 px-4 py-3">
             <span>Ежедневное напоминание об уроке</span>
-            <Switch /* TODO: связать с user.notification.daily */ />
+            <Switch />
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/80 px-4 py-3">
             <span>Email-дайджест прогресса</span>
-            <Switch /* TODO: связать с user.notification.email */ />
+            <Switch />
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/80 px-4 py-3">
             <span>Push-уведомления на устройство</span>
-            <Switch /* TODO: связать с user.notification.push */ />
+            <Switch />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      {/* --------------------------------------------------------------------- */}
-      {/* EDIT PROFILE DIALOG                                                  */}
-      {/* --------------------------------------------------------------------- */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="rounded-2xl border border-white/60 bg-white/85 p-6 shadow-xl shadow-slate-200/70 backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle>Редактировать профиль</DialogTitle>
+            <DialogTitle className="text-slate-900">Редактировать профиль</DialogTitle>
           </DialogHeader>
-
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="full_name">ФИО</Label>
+              <Label htmlFor="full_name">Имя</Label>
               <Input
                 id="full_name"
                 value={form.full_name}
-                onChange={(e) =>
-                  setForm({ ...form, full_name: e.target.value })
-                }
+                onChange={(e) => setForm((prev) => ({ ...prev, full_name: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="bio">О себе</Label>
               <Textarea
                 id="bio"
-                rows={4}
                 value={form.bio}
-                onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                onChange={(e) => setForm((prev) => ({ ...prev, bio: e.target.value }))}
+                rows={4}
               />
             </div>
-          </div>
-
-          <div className="flex justify-end gap-2 mt-6">
-            <Button variant="outline" onClick={() => setEditOpen(false)} className="active:scale-95 transition-transform">
-              Отмена
-            </Button>
-            <Button
-              onClick={handleSaveProfile}
-              disabled={saving}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white active:scale-95 transition-transform"
-            >
-              {saving && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Сохранить
-            </Button>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditOpen(false)} className="rounded-full">
+                Отмена
+              </Button>
+              <Button onClick={handleSaveProfile} disabled={saving} className="rounded-full">
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Сохранить
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* --------------------------------------------------------------------- */}
-      {/* AVATAR DIALOG                                                        */}
-      {/* --------------------------------------------------------------------- */}
       <Dialog open={avatarOpen} onOpenChange={setAvatarOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="rounded-2xl border border-white/60 bg-white/85 p-6 shadow-xl shadow-slate-200/70 backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle>Выберите аватар</DialogTitle>
+            <DialogTitle className="text-slate-900">Выберите новый аватар</DialogTitle>
           </DialogHeader>
-
-          <AvatarPicker
-            selected={selectedAvatar}
-            onSelect={setSelectedAvatar}
-          />
-
-          <div className="flex justify-end gap-2 mt-6">
-            <Button variant="outline" onClick={() => setAvatarOpen(false)} className="active:scale-95 transition-transform">
+          <AvatarPicker value={selectedAvatar} onChange={setSelectedAvatar} />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setAvatarOpen(false)} className="rounded-full">
               Отмена
             </Button>
-            <Button
-              onClick={handleSaveAvatar}
-              disabled={!selectedAvatar}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white active:scale-95 transition-transform"
-            >
+            <Button onClick={handleSaveAvatar} disabled={!selectedAvatar} className="rounded-full">
               Сохранить
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-      </div>
     </div>
   );
 }
