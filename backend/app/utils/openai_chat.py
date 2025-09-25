@@ -22,12 +22,28 @@ async def openai_chat(messages: list[dict[str, Any]]) -> dict[str, Any]:
 
     print("🔥 Sending payload:", payload)
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers=headers,
-            json=payload
-        )
+    import asyncio
+    max_attempts = 3
+    delays = [1, 2, 4]
+    last_exc = None
+    for attempt in range(max_attempts):
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=60.0  # <-- вот здесь таймаут в секундах
+                )
+            break
+        except (httpx.ReadTimeout, httpx.ConnectTimeout) as exc:
+            last_exc = exc
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(delays[attempt])
+            else:
+                raise
+        except Exception:
+            raise
 
     print("🔥 Raw response:", response.text)
 

@@ -1,6 +1,7 @@
 from uuid import UUID
 import json
 import re
+import traceback
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import distinct, and_
@@ -189,20 +190,16 @@ async def chat(
             except Exception:
                 plan_draft = None
 
-        if not content_text or not content_text.strip():
-            raise HTTPException(status_code=502, detail="LLM returned empty response")
+        # убираем выброс 502 при пустом content_text, делаем fallback
+        content_text = content_text or "Извини, я не смог составить план."
 
         print("🧩 Parsed planDraft:", plan_draft)
 
-        # --- создаём план и вложенные сущности, если пришёл planDraft.create_plan ---
-        if isinstance(plan_draft, dict) and plan_draft.get("action") == "create_plan":
+        # --- создаём план и вложенные сущности, если пришёл planDraft с модулями ---
+        modules = plan_draft.get("modules") if isinstance(plan_draft, dict) else None
+        if isinstance(plan_draft, dict) and isinstance(modules, list) and modules:
             title = str(plan_draft.get("title") or "Untitled Plan")
             description = str(plan_draft.get("description") or "")
-            modules = plan_draft.get("modules", [])
-
-            # Валидация: modules должен быть списком и не пустым
-            if not isinstance(modules, list) or len(modules) == 0:
-                raise HTTPException(status_code=422, detail="План невалидный: отсутствуют модули")
 
             # 1) сам план
             new_plan = LearningPlan(
@@ -232,7 +229,6 @@ async def chat(
                 db.flush()
 
                 lessons = module_data.get("lessons", [])
-                # Валидация: lessons должен быть списком
                 if not isinstance(lessons, list):
                     lessons = []
 
@@ -245,7 +241,6 @@ async def chat(
                     lesson_type = str(lesson_data.get("type") or "theory")
 
                     lesson_content = lesson_data.get("content") or {}
-                    # content гарантированно dict
                     if not isinstance(lesson_content, dict):
                         lesson_content = {"text": str(lesson_content)}
 
@@ -260,7 +255,6 @@ async def chat(
                     db.flush()
 
                     tasks = lesson_data.get("tasks", [])
-                    # Валидация: tasks должен быть списком
                     if not isinstance(tasks, list):
                         tasks = []
 
@@ -289,7 +283,7 @@ async def chat(
             db.commit()
             db.refresh(new_plan)
             plan_id = new_plan.id
-            print("✅ Plan created with nested items (validated):", plan_id)
+            print("✅ Plan created with nested items:", plan_id)
 
         # сохраняем в БД (в чат кладем уже нормальные данные)
         new_message = ChatMessage(
@@ -298,22 +292,25 @@ async def chat(
             prompt=chat_data.prompt,
             response=content_text,
             plan_id=plan_id,
-            plan_snapshot=plan_draft if plan_draft else None,  # 💾 сохраняем план
+            plan_snapshot=plan_draft if isinstance(plan_draft, dict) else None,
         )
         db.add(new_message)
         db.commit()
 
         formatted_plan = _format_plan_for_chat(plan_draft) if plan_draft and plan_id else content_text
-        return ChatResponse(
-            response=formatted_plan,
-            planDraft=plan_draft,
-            plan_id=plan_id
-        )
+
+        return {
+            "response": formatted_plan,
+            "planDraft": plan_draft or None,
+            "plan_id": str(plan_id) if plan_id else None
+        }
     except HTTPException:
         db.rollback()
         raise
     except Exception as e:
         db.rollback()
+        print("💥 Ошибка в /chat/send:", str(e))
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 # список менторов, с которыми у пользователя была переписка
