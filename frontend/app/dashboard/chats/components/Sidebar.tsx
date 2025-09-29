@@ -1,23 +1,23 @@
 // Файл: app/(dashboard)/chats/components/Sidebar.tsx
 "use client"
 
-import Image from "next/image"
-import { useState } from "react"
-import { api } from "@/lib/api"
+import Image from "next/image";
+import { useState } from "react";
+import { api } from "@/lib/api";
 
-interface Mentor {
-  id: string
-  name: string
-  subject: string
-  description: string
-  avatar_url?: string
-  category: string
+export interface SidebarMentor {
+  id: string;
+  name: string;
+  subject: string;
+  description: string;
+  avatar_url?: string;
+  category: string;
 }
 
 interface SidebarProps {
-  mentors: Mentor[]
-  onSelect: (mentorId: string) => void
-  onDelete: (mentorId: string) => void // Колбэк для удаления ментора из родительского компонента
+  mentors: SidebarMentor[];
+  onSelect: (mentorId: string) => void;
+  onDelete: (mentorId: string) => void;
 }
 
 export default function Sidebar({ mentors, onSelect, onDelete }: SidebarProps) {
@@ -49,7 +49,7 @@ export default function Sidebar({ mentors, onSelect, onDelete }: SidebarProps) {
     }
   }
   return (
-    <aside className="flex h-full w-full flex-col overflow-hidden rounded-3xl border border-white/60 bg-white/75 p-4 shadow-xl shadow-slate-200/60 backdrop-blur-xl lg:w-[300px]">
+    <aside className="flex h-full w-full flex-col overflow-hidden rounded-3xl border border-white/60 bg-white/80 p-4 shadow-xl shadow-slate-200/60 backdrop-blur-xl lg:w-[320px]">
       <h2 className="text-lg font-semibold text-slate-900">Мои наставники</h2>
       <p className="mt-1 text-xs text-slate-400">Выбирайте диалог, чтобы продолжить общение</p>
 
@@ -59,7 +59,7 @@ export default function Sidebar({ mentors, onSelect, onDelete }: SidebarProps) {
         </p>
       )}
 
-      <ul className="mt-4 space-y-2 overflow-y-auto pr-1">
+      <ul className="mt-4 space-y-2 overflow-y-auto pr-2">
         {mentors.map((mentor) => (
           <li key={mentor.id} className="relative">
             <button
