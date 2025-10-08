@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,11 +25,35 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <Script id="aivy-theme-init" strategy="beforeInteractive">
+          {`
+            (function () {
+              try {
+                var storageKey = "aivy-theme";
+                var stored = window.localStorage.getItem(storageKey);
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                var theme = stored === "light" || stored === "dark" ? stored : (prefersDark ? "dark" : "light");
+                var root = document.documentElement;
+                if (theme === "dark") {
+                  root.classList.add("dark");
+                } else {
+                  root.classList.remove("dark");
+                }
+                root.setAttribute("data-theme", theme);
+                if (document.body) {
+                  document.body.style.colorScheme = theme;
+                }
+              } catch (error) {
+                console.error("Theme init error", error);
+              }
+            })();
+          `}
+        </Script>
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

@@ -194,7 +194,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-slate-500">
+      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
         <LogoLoader size={80} />
         <p className="text-sm font-medium">Загружаем профиль…</p>
       </div>
@@ -202,68 +202,68 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    return <p className="text-sm text-slate-500">Профиль не найден…</p>;
+    return <p className="text-sm text-slate-500 dark:text-slate-400">Профиль не найден…</p>;
   }
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/75 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl sm:p-10">
-        <div className="absolute -top-16 right-10 h-44 w-44 rounded-full bg-sky-200/40 blur-3xl" />
-        <div className="absolute -bottom-20 left-6 h-56 w-56 rounded-full bg-indigo-200/35 blur-3xl" />
+      <section className="relative overflow-hidden rounded-3xl border border-white/60 dark:border-slate-800/60 bg-white/75 dark:bg-slate-900/70 p-6 shadow-xl shadow-slate-200/60 dark:shadow-slate-950/50 backdrop-blur-xl sm:p-10">
+        <div className="absolute -top-16 right-10 h-44 w-44 rounded-full bg-sky-200/40 dark:bg-slate-800/40 blur-3xl" />
+        <div className="absolute -bottom-20 left-6 h-56 w-56 rounded-full bg-indigo-200/35 dark:bg-indigo-900/35 blur-3xl" />
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center">
           <div className="relative mx-auto w-fit">
             <div className="h-32 w-32 overflow-hidden rounded-3xl border-4 border-white shadow-lg shadow-slate-300">
               {user.avatar_url ? (
                 <Image src={user.avatar_url} alt="Аватар" width={128} height={128} className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-slate-100 text-3xl font-semibold uppercase text-slate-400">
+                <div className="flex h-full w-full items-center justify-center bg-slate-100 dark:bg-slate-800/70 text-3xl font-semibold uppercase text-slate-400 dark:text-slate-500">
                   {user.full_name?.[0] ?? "?"}
                 </div>
               )}
             </div>
             <button
               onClick={() => setAvatarOpen(true)}
-              className="absolute -bottom-2 -right-2 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-lg shadow-slate-200 transition hover:-translate-y-0.5"
+              className="absolute -bottom-2 -right-2 inline-flex items-center gap-1 rounded-full bg-white dark:bg-slate-900 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-lg shadow-slate-200 dark:shadow-slate-950/50 transition hover:-translate-y-0.5"
             >
               <Camera size={14} /> Сменить
             </button>
           </div>
           <div className="flex-1 space-y-4">
             <div className="flex flex-wrap items-center gap-3">
-              <Badge className="bg-sky-100 text-sky-600">{user.role}</Badge>
-              <Badge variant="outline" className="border-slate-200 text-slate-500">
+              <Badge className="bg-sky-100 text-sky-600 dark:bg-slate-800/70 dark:text-slate-200">{user.role}</Badge>
+              <Badge variant="outline" className="border-slate-200 text-slate-500 dark:text-slate-400">
                 На платформе с {new Date(user.created_at).toLocaleDateString()}
               </Badge>
             </div>
             <div className="space-y-2">
-              <h1 className="text-3xl font-semibold text-slate-900 md:text-4xl">{user.full_name || "Без имени"}</h1>
-              <p className="max-w-2xl text-sm text-slate-500">
+              <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-100 md:text-4xl">{user.full_name || "Без имени"}</h1>
+              <p className="max-w-2xl text-sm text-slate-500 dark:text-slate-400">
                 {user.bio || "Добавьте краткую информацию о себе, чтобы наставники лучше понимали ваши цели."}
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
               <Badge variant="secondary">Lvl {dummyProgress.level}</Badge>
               <Badge variant="outline" className="border-emerald-200 text-emerald-600">
                 🔥 Серия {dummyProgress.streak} дн.
               </Badge>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">XP: {dummyProgress.currentXP}</span>
+              <span className="rounded-full bg-slate-100 dark:bg-slate-800/70 px-3 py-1 text-xs text-slate-500 dark:text-slate-400">XP: {dummyProgress.currentXP}</span>
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
-              <span className="font-medium text-slate-600">Email:</span>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+              <span className="font-medium text-slate-600 dark:text-slate-300">Email:</span>
               <span>{user.email}</span>
             </div>
             <div className="flex flex-wrap gap-3">
               <Button
                 size="sm"
                 onClick={() => setEditOpen(true)}
-                className="rounded-full bg-gradient-to-r from-sky-300 via-indigo-300 to-violet-300 px-5 text-slate-900 shadow-md shadow-sky-100/70 hover:-translate-y-0.5"
+                className="rounded-full bg-gradient-to-r from-sky-300 via-indigo-300 to-violet-300 px-5 text-slate-900 dark:text-slate-100 shadow-md shadow-sky-100/70 hover:-translate-y-0.5"
               >
                 <Pencil size={16} className="mr-1" /> Редактировать профиль
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                className="rounded-full border-slate-200 px-5 text-slate-600 shadow-sm hover:-translate-y-0.5"
+                className="rounded-full border-slate-200 px-5 text-slate-600 dark:text-slate-300 shadow-sm hover:-translate-y-0.5"
                 onClick={() => router.push("/dashboard/learning")}
               >
                 Перейти к обучению
@@ -274,42 +274,42 @@ export default function ProfilePage() {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-white/60 bg-white/75 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl">
+        <div className="rounded-3xl border border-white/60 dark:border-slate-800/60 bg-white/75 dark:bg-slate-900/70 p-6 shadow-xl shadow-slate-200/60 dark:shadow-slate-950/50 backdrop-blur-xl">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-slate-900">Ваш прогресс</h2>
-            <Badge variant="outline" className="border-slate-200 text-slate-500">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Ваш прогресс</h2>
+            <Badge variant="outline" className="border-slate-200 text-slate-500 dark:text-slate-400">
               +{dummyProgress.weeklyPoints} очков за неделю
             </Badge>
           </div>
           <div className="mt-6 space-y-4">
-            <div className="flex items-center justify-between text-sm text-slate-500">
+            <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
               <span>Уровень {dummyProgress.level}</span>
               <span>{dummyProgress.currentXP} / {dummyProgress.nextXP} XP</span>
             </div>
-            <div className="rounded-full bg-slate-100">
+            <div className="rounded-full bg-slate-100 dark:bg-slate-800/70">
               <Progress
                 value={(dummyProgress.currentXP / dummyProgress.nextXP) * 100}
                 className="h-3 rounded-full"
               />
             </div>
-            <div className="grid gap-4 text-sm text-slate-600 sm:grid-cols-2">
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white/80 px-4 py-3">
+            <div className="grid gap-4 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-2">
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white/80 dark:bg-slate-900/65 px-4 py-3">
                 <Flame size={18} className="text-orange-500" /> Серия {dummyProgress.streak} дн.
               </div>
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white/80 px-4 py-3">
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white/80 dark:bg-slate-900/65 px-4 py-3">
                 <Trophy size={18} className="text-yellow-500" /> Очков за неделю: {dummyProgress.weeklyPoints}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-white/60 bg-white/75 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl">
-          <h2 className="text-xl font-semibold text-slate-900">Достижения</h2>
+        <div className="rounded-3xl border border-white/60 dark:border-slate-800/60 bg-white/75 dark:bg-slate-900/70 p-6 shadow-xl shadow-slate-200/60 dark:shadow-slate-950/50 backdrop-blur-xl">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Достижения</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
             {dummyAchievements.map((a) => (
               <div
                 key={a.id}
-                className="flex flex-col items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-center text-sm text-slate-600 shadow-inner"
+                className="flex flex-col items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/80 dark:bg-slate-800/40 p-4 text-center text-sm text-slate-600 dark:text-slate-300 shadow-inner"
               >
                 <span className="text-sky-500">{a.icon}</span>
                 <span className="text-xs font-medium">{a.name}</span>
@@ -320,24 +320,24 @@ export default function ProfilePage() {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-white/60 bg-white/75 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl">
-          <h2 className="text-xl font-semibold text-slate-900">План обучения</h2>
-          <p className="mt-2 text-sm text-slate-500">
+        <div className="rounded-3xl border border-white/60 dark:border-slate-800/60 bg-white/75 dark:bg-slate-900/70 p-6 shadow-xl shadow-slate-200/60 dark:shadow-slate-950/50 backdrop-blur-xl">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">План обучения</h2>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             Детали уроков и домашних заданий появятся здесь после подключения API.
           </p>
           <Accordion type="single" collapsible className="mt-4">
             {dummySchedule.map((item) => (
               <AccordionItem value={String(item.id)} key={item.id}>
                 <AccordionTrigger>
-                  <span className="text-left text-sm text-slate-700">
+                  <span className="text-left text-sm text-slate-700 dark:text-slate-200">
                     {new Date(item.date).toLocaleDateString()} — {item.title}
                   </span>
-                  <Badge variant="outline" className="ml-auto border-slate-200 text-slate-500">
+                  <Badge variant="outline" className="ml-auto border-slate-200 text-slate-500 dark:text-slate-400">
                     {item.status}
                   </Badge>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     Подробности урока станут доступны после подключения API.
                   </p>
                 </AccordionContent>
@@ -346,11 +346,11 @@ export default function ProfilePage() {
           </Accordion>
         </div>
 
-        <div className="rounded-3xl border border-white/60 bg-white/75 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl">
-          <h2 className="text-xl font-semibold text-slate-900">Мои наставники</h2>
-          <p className="mt-2 text-sm text-slate-500">Последние диалоги из раздела чатов.</p>
+        <div className="rounded-3xl border border-white/60 dark:border-slate-800/60 bg-white/75 dark:bg-slate-900/70 p-6 shadow-xl shadow-slate-200/60 dark:shadow-slate-950/50 backdrop-blur-xl">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Мои наставники</h2>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Последние диалоги из раздела чатов.</p>
           {loadingMentors ? (
-            <div className="mt-6 flex items-center gap-2 text-sm text-slate-500">
+            <div className="mt-6 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
               <Loader2 className="h-4 w-4 animate-spin" /> Загружаем наставников…
             </div>
           ) : activeMentors.length ? (
@@ -358,10 +358,10 @@ export default function ProfilePage() {
               {activeMentors.map((m) => (
                 <button
                   key={m.id}
-                  className="flex flex-col items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-5 text-center text-sm text-slate-600 shadow-inner transition hover:-translate-y-0.5"
+                  className="flex flex-col items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 dark:bg-slate-800/40 px-4 py-5 text-center text-sm text-slate-600 dark:text-slate-300 shadow-inner transition hover:-translate-y-0.5"
                   onClick={() => router.push(`/dashboard/chats?selected=${m.id}`)}
                 >
-                  <div className="h-12 w-12 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-12 w-12 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800/70">
                     <Image
                       src={m.avatar_url ? `/${m.avatar_url}` : "/default-avatar.png"}
                       alt={m.name}
@@ -372,7 +372,7 @@ export default function ProfilePage() {
                   </div>
                   <p className="text-sm font-medium line-clamp-2">{m.name}</p>
                   {m.todayLesson && (
-                    <Badge variant="secondary" className="bg-sky-100 text-sky-600">
+                    <Badge variant="secondary" className="bg-sky-100 text-sky-600 dark:bg-slate-800/70 dark:text-slate-200">
                       Урок сегодня
                     </Badge>
                   )}
@@ -380,26 +380,26 @@ export default function ProfilePage() {
               ))}
             </div>
           ) : (
-            <p className="mt-6 text-sm text-slate-500">Нет активных менторов</p>
+            <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">Нет активных менторов</p>
           )}
         </div>
       </section>
 
-      <section className="rounded-3xl border border-white/60 bg-white/75 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-xl">
-        <h2 className="text-xl font-semibold text-slate-900">Уведомления</h2>
-        <p className="mt-2 text-sm text-slate-500">
+      <section className="rounded-3xl border border-white/60 dark:border-slate-800/60 bg-white/75 dark:bg-slate-900/70 p-6 shadow-xl shadow-slate-200/60 dark:shadow-slate-950/50 backdrop-blur-xl">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Уведомления</h2>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           Настройте напоминания, чтобы не пропускать новые уроки и отчёты.
         </p>
         <div className="mt-5 space-y-4 text-sm">
-          <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/80 px-4 py-3">
+          <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/80 dark:bg-slate-900/65 px-4 py-3">
             <span>Ежедневное напоминание об уроке</span>
             <Switch />
           </div>
-          <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/80 px-4 py-3">
+          <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/80 dark:bg-slate-900/65 px-4 py-3">
             <span>Email-дайджест прогресса</span>
             <Switch />
           </div>
-          <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/80 px-4 py-3">
+          <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white/80 dark:bg-slate-900/65 px-4 py-3">
             <span>Push-уведомления на устройство</span>
             <Switch />
           </div>
@@ -407,9 +407,9 @@ export default function ProfilePage() {
       </section>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="rounded-2xl border border-white/60 bg-white/85 p-6 shadow-xl shadow-slate-200/70 backdrop-blur-xl">
+        <DialogContent className="rounded-2xl border border-white/60 dark:border-slate-800/60 bg-white/85 dark:bg-slate-900/70 p-6 shadow-xl shadow-slate-200/70 dark:shadow-slate-950/50 backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle className="text-slate-900">Редактировать профиль</DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-slate-100">Редактировать профиль</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -443,9 +443,9 @@ export default function ProfilePage() {
       </Dialog>
 
       <Dialog open={avatarOpen} onOpenChange={setAvatarOpen}>
-        <DialogContent className="rounded-2xl border border-white/60 bg-white/85 p-6 shadow-xl shadow-slate-200/70 backdrop-blur-xl">
+        <DialogContent className="rounded-2xl border border-white/60 dark:border-slate-800/60 bg-white/85 dark:bg-slate-900/70 p-6 shadow-xl shadow-slate-200/70 dark:shadow-slate-950/50 backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle className="text-slate-900">Выберите новый аватар</DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-slate-100">Выберите новый аватар</DialogTitle>
           </DialogHeader>
           <AvatarPicker value={selectedAvatar} onChange={setSelectedAvatar} />
           <div className="flex justify-end gap-2">

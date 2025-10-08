@@ -121,6 +121,56 @@
   }
 }
 
+@layer base {
+  .dark :is(
+      .bg-white,
+      .bg-white\/95,
+      .bg-white\/90,
+      .bg-white\/85,
+      .bg-white\/80,
+      .bg-white\/75,
+      .bg-white\/70,
+      .bg-white\/65
+    ) {
+    background-color: rgba(15, 23, 42, 0.88);
+    background-color: color-mix(in oklch, var(--card) 92%, transparent 8%);
+  }
+
+  .dark .bg-slate-50\/80,
+  .dark .bg-slate-50\/90 {
+    background-color: color-mix(in oklch, var(--muted) 45%, transparent 55%);
+  }
+
+  .dark :is(.border-white, .border-white\/60, .border-white\/55, .border-white\/50, .border-white\/40) {
+    border-color: rgba(148, 163, 184, 0.25);
+    border-color: color-mix(in oklch, var(--border) 80%, transparent 20%);
+  }
+
+  .dark .shadow-slate-200\/60,
+  .dark .shadow-slate-200\/70,
+  .dark .shadow-slate-200\/80 {
+    box-shadow: 0 30px 70px -35px rgba(15, 23, 42, 0.65);
+  }
+
+  .dark .shadow-sky-100\/70,
+  .dark .shadow-sky-100\/60 {
+    box-shadow: 0 25px 60px -30px rgba(56, 189, 248, 0.25);
+  }
+
+  .dark :is(
+      .bg-sky-100,
+      .bg-sky-100\/90,
+      .bg-sky-100\/80,
+      .bg-indigo-200\/80,
+      .bg-indigo-200\/40,
+      .bg-violet-200\/80,
+      .bg-violet-200\/40,
+      .bg-sky-200\/40
+    ) {
+    background-color: rgba(30, 41, 59, 0.45);
+  }
+}
+
 
 @keyframes gradient {
   0% { background-position: 0% 50%; }

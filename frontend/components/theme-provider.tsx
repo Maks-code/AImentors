@@ -52,6 +52,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.classList.remove("dark");
     }
     root.setAttribute("data-theme", theme);
+    if (document.body) {
+      document.body.style.colorScheme = theme;
+    }
     window.localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 

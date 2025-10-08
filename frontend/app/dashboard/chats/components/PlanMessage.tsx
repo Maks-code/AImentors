@@ -3,6 +3,7 @@
 
 import { useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 
 type PlanTask = {
   id?: string
@@ -47,23 +48,23 @@ interface PlanMessageProps {
 const STATUS_META: Record<PlanStatus | "untracked", { label: string; className: string }> = {
   active: {
     label: "Новый план",
-    className: "bg-indigo-100 text-indigo-700",
+    className: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200",
   },
   confirmed: {
     label: "План принят",
-    className: "bg-green-100 text-green-700",
+    className: "bg-green-100 text-green-700 dark:bg-emerald-500/20 dark:text-emerald-200",
   },
   completed: {
     label: "План завершён",
-    className: "bg-emerald-100 text-emerald-700",
+    className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200",
   },
   deleted: {
     label: "План отклонён",
-    className: "bg-red-100 text-red-700",
+    className: "bg-red-100 text-red-700 dark:bg-rose-500/20 dark:text-rose-200",
   },
   untracked: {
     label: "Статус неизвестен",
-    className: "bg-gray-100 text-gray-600",
+    className: "bg-gray-100 text-gray-600 dark:bg-slate-600/30 dark:text-slate-300",
   },
 }
 
@@ -102,25 +103,25 @@ export default function PlanMessage({ plan, plan_id, plan_status, onConfirm, onR
   const planDescription = data.description?.trim() ? data.description : "Описание отсутствует"
 
   return (
-    <div className="w-full max-w-lg rounded-xl border bg-white p-4 shadow-md">
+    <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-4 text-slate-900 shadow-md transition-colors dark:border-slate-800/60 dark:bg-slate-900/70 dark:text-slate-100 dark:shadow-slate-950/40">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">📋 {planTitle}</h3>
-          <p className="mt-1 text-sm text-gray-600 whitespace-pre-line">
+          <h3 className="text-lg font-semibold text-gray-900 transition-colors dark:text-slate-100">📋 {planTitle}</h3>
+          <p className="mt-1 whitespace-pre-line text-sm text-gray-600 transition-colors dark:text-slate-300">
             {planDescription}
           </p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusInfo.className}`}>
+        <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", statusInfo.className)}>
           {statusInfo.label}
         </span>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
-        <span className="rounded-full bg-gray-100 px-2 py-1">Модулей: {modules.length}</span>
-        <span className="rounded-full bg-gray-100 px-2 py-1">Уроков: {lessons.length}</span>
-        <span className="rounded-full bg-gray-100 px-2 py-1">Заданий: {tasks.length}</span>
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600 transition-colors dark:text-slate-300">
+        <span className="rounded-full bg-gray-100 px-2 py-1 transition-colors dark:bg-slate-700/40">Модулей: {modules.length}</span>
+        <span className="rounded-full bg-gray-100 px-2 py-1 transition-colors dark:bg-slate-700/40">Уроков: {lessons.length}</span>
+        <span className="rounded-full bg-gray-100 px-2 py-1 transition-colors dark:bg-slate-700/40">Заданий: {tasks.length}</span>
         {plan_id && (
-          <span className="font-mono text-[11px] text-gray-400">ID: {plan_id}</span>
+          <span className="font-mono text-[11px] text-gray-400 transition-colors dark:text-slate-500">ID: {plan_id}</span>
         )}
       </div>
 
@@ -131,23 +132,26 @@ export default function PlanMessage({ plan, plan_id, plan_status, onConfirm, onR
           const remainingLessons = moduleLessons.length - previewLessons.length
 
           return (
-            <div key={module.id ?? `module-${moduleIndex}`} className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
-              <p className="text-sm font-semibold text-gray-900">
+            <div
+              key={module.id ?? `module-${moduleIndex}`}
+              className="rounded-lg border border-gray-100 bg-gray-50/60 p-3 transition-colors dark:border-slate-700/60 dark:bg-slate-800/50"
+            >
+              <p className="text-sm font-semibold text-gray-900 transition-colors dark:text-slate-100">
                 Модуль {moduleIndex + 1}. {module.title || "Без названия"}
               </p>
               {module.description && (
-                <p className="mt-1 text-xs text-gray-600">{module.description}</p>
+                <p className="mt-1 text-xs text-gray-600 transition-colors dark:text-slate-300">{module.description}</p>
               )}
 
               {previewLessons.length > 0 && (
-                <ul className="mt-2 space-y-1 text-xs text-gray-600">
+                <ul className="mt-2 space-y-1 text-xs text-gray-600 transition-colors dark:text-slate-300">
                   {previewLessons.map((lesson, lessonIndex) => (
                     <li key={lesson.id ?? `lesson-${moduleIndex}-${lessonIndex}`} className="flex items-center gap-2">
-                      <span className="text-gray-400">•</span>
+                      <span className="text-gray-400 transition-colors dark:text-slate-500">•</span>
                       <span>
                         {lesson.title || "Урок"}
                         {lesson.type && (
-                          <span className="ml-1 text-[11px] uppercase tracking-wide text-gray-400">
+                          <span className="ml-1 text-[11px] uppercase tracking-wide text-gray-400 transition-colors dark:text-slate-500">
                             {lesson.type}
                           </span>
                         )}
@@ -155,7 +159,7 @@ export default function PlanMessage({ plan, plan_id, plan_status, onConfirm, onR
                     </li>
                   ))}
                   {remainingLessons > 0 && (
-                    <li className="text-gray-400">+ ещё {remainingLessons} урок(ов)</li>
+                    <li className="text-gray-400 transition-colors dark:text-slate-500">+ ещё {remainingLessons} урок(ов)</li>
                   )}
                 </ul>
               )}
@@ -164,7 +168,7 @@ export default function PlanMessage({ plan, plan_id, plan_status, onConfirm, onR
         })}
 
         {remainingModules > 0 && (
-          <p className="text-xs text-gray-500">+ ещё {remainingModules} модулей в этом плане</p>
+          <p className="text-xs text-gray-500 transition-colors dark:text-slate-400">+ ещё {remainingModules} модулей в этом плане</p>
         )}
       </div>
 
@@ -173,11 +177,12 @@ export default function PlanMessage({ plan, plan_id, plan_status, onConfirm, onR
           type="button"
           onClick={openPlan}
           disabled={!canOpenPlan}
-          className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition ${
+          className={cn(
+            "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition",
             canOpenPlan
-              ? "bg-blue-600 text-white hover:bg-blue-700"
-              : "cursor-not-allowed bg-blue-100 text-blue-300"
-          }`}
+              ? "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400"
+              : "cursor-not-allowed bg-blue-100 text-blue-300 dark:bg-blue-500/10 dark:text-blue-300/60",
+          )}
         >
           {canOpenPlan
             ? plan_status === "completed"
@@ -210,15 +215,15 @@ export default function PlanMessage({ plan, plan_id, plan_status, onConfirm, onR
         )}
 
         {plan_status === "confirmed" && (
-          <span className="text-sm font-medium text-green-600">План подтверждён</span>
+          <span className="text-sm font-medium text-green-600 transition-colors dark:text-emerald-300">План подтверждён</span>
         )}
 
         {plan_status === "deleted" && (
-          <span className="text-sm font-medium text-red-600">План отклонён</span>
+          <span className="text-sm font-medium text-red-600 transition-colors dark:text-rose-300">План отклонён</span>
         )}
 
         {!canOpenPlan && plan_status !== "deleted" && (
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-500 transition-colors dark:text-slate-400">
             План станет доступен в обучении после подтверждения.
           </span>
         )}

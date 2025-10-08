@@ -4,7 +4,7 @@ import re
 import traceback
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import distinct, and_
+from sqlalchemy import and_, func
 from uuid import UUID
 from app.core.config import settings
 from app.database import get_db
@@ -322,28 +322,35 @@ def get_chat_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    mentor_ids = (
-        db.query(distinct(ChatMessage.mentor_id))
+    latest_interaction_subq = (
+        db.query(
+            ChatMessage.mentor_id.label("mentor_id"),
+            func.max(ChatMessage.created_at).label("last_interaction"),
+        )
         .filter(ChatMessage.user_id == current_user.id)
+        .group_by(ChatMessage.mentor_id)
+        .subquery()
+    )
+
+    mentors_with_last = (
+        db.query(Mentor, latest_interaction_subq.c.last_interaction)
+        .join(latest_interaction_subq, latest_interaction_subq.c.mentor_id == Mentor.id)
+        .order_by(latest_interaction_subq.c.last_interaction.desc())
         .all()
     )
-    mentor_ids = [row[0] for row in mentor_ids]  # распаковка DISTINCT
-
-    if not mentor_ids:
-        return []
-
-    mentors = db.query(Mentor).filter(Mentor.id.in_(mentor_ids)).all()
 
     return [
-    {
-        "id": str(m.id),
-        "name": m.name,
-        "subject": m.subject,
-        "description": getattr(m, "description", "") or getattr(m, "bio", "") or "",
-        "avatar_url": m.avatar_url,   # ← добавляем
-    }
-    for m in mentors
-]
+        {
+            "id": str(mentor.id),
+            "name": mentor.name,
+            "subject": mentor.subject,
+            "description": getattr(mentor, "description", "") or getattr(mentor, "bio", "") or "",
+            "avatar_url": mentor.avatar_url,
+            "category": getattr(mentor, "category", "") or "",
+            "last_interaction": last_interaction.isoformat() if last_interaction else None,
+        }
+        for mentor, last_interaction in mentors_with_last
+    ]
 
 
 # вся переписка с конкретным ментором

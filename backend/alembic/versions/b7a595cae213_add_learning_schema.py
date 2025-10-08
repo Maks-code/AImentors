@@ -1,7 +1,7 @@
 """add learning schema
 
 Revision ID: b7a595cae213
-Revises: d2446bf17e09
+Revises: 02c63892bbda
 Create Date: 2025-09-23 11:45:09.188710
 
 """
